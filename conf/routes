@@ -1,0 +1,69 @@
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+# Home page
+GET     /                           controllers.Application.index
+
+# Catalog "handler" :
+# - "whipper.catalog.add"
+# - "whipper.catalog.update"
+# - "whipper.catalog.delete"
+# - "whipper.catalog.elems.append"
+# - "whipper.catalog.elems.remove"
+# - "whipper.catalog.elems.clean"
+PATCH 	/catalogs  								controllers.CatalogCtrl.action
+
+GET 	/catalogs/:id 							controllers.CatalogCtrl.retrieve(id: Long)
+GET 	/catalogs 								controllers.CatalogCtrl.query(page: Option[Int], size: Option[Int])
+GET 	/catalogs/:id/elems 					controllers.CatalogCtrl.union(id: Long)
+
+
+# Questions "handler" :
+# - "whipper.questions.add"
+# - "whipper.questions.update"
+# - "whipper.questions.delete"
+# - "whipper.questions.attrs.append" : add the specific attrs elems into the question `attrs` column
+# - "whipper.questions.attrs.remove" : remove the specific attrs elems from the question `attrs` column
+# - "whipper.questions.attrs.clean" : empty the attrs elems list of the question
+POST	/questions    				controllers.QuestionsCtrl.action
+
+GET 	/questions/:id 				controllers.QuestionsCtrl.retrieve(id: Long)
+
+
+# Composites "handler" :
+# - "whipper.composites.add"
+# - "whipper.composites.update"
+# - "whipper.composites.delete"
+# - "whipper.composites.struct.append" : add the specific struct elems into the composite `struct` column
+# - "whipper.composites.struct.remove" : remove specific struct elems from the composite `struct` column
+# - "whipper.composites.struct.clean" : empty the struct elems list of the composite
+POST 	/composites  				controllers.CompositesCtrl.action
+
+GET 	/composites/:id 			controllers.CompositesCtrl.retrieve(id: Long)
+
+
+# Papers "handler" :
+# - "whipper.papers.add"
+# - "whipper.papers.update"
+# - "whipper.papers.delete"
+# - "whipper.papers.struct.append" : add the specific struct elems into the paper `struct` column
+# - "whipper.papers.struct.remove" : remove specific struct elems from the paper `struct` column
+# - "whipper.papers.struct.clean" : empty the struct elems list of the paper
+# - "whipper.papers.attrs.append" : add the specific attrs elems into the paper `attrs` column
+# - "whipper.papers.attrs.remove" : remove the specific attrs elems from the paper `attrs` column
+# - "whipper.papers.attrs.clean" : empty the attrs elems list of the paper
+# - "whipper.paper.status.process" : push forward the reviewing status of the paper
+# - "whipper.paper.status.reset" : reset the reviewing status of the paper to "EDITING"
+POST 	/papers 					controllers.PapersCtrl.action
+
+GET 	/papers/:id 				controllers.PapersCtrl.retrieve(id: Long)
+GET 	/papers 					controllers.PapersCtrl.query(page: Option[Int], size: Option[Int])
+
+
+# Exams "handler" :
+# - "whipper.exams.publish.from.paper"
+# - "whipper.exams.revoke"
+POST 	/exams 						controllers.ExamsCtrl.action
+
+GET 	/exams/:id 					controllers.ExamsCtrl.retrieve(id: Long)
+GET 	/exams  					controllers.ExamsCtrl.query(page: Option[Int], size: Option[Int])
