@@ -26,9 +26,6 @@ object Global extends WithFilters(
 	private val EXCAHNGE_NAME = "UpdateExchange"
 
 	private val factory: ConnectionFactory = new ConnectionFactory()
-	// factory.setHost("112.124.20.51")
-	// factory.setUsername("admin")
- //    factory.setPassword("039NpFalhcDs")
  	factory.setHost(Play.current.configuration.getString("mq.default.url").getOrElse(""))
  	factory.setUsername(Play.current.configuration.getString("mq.default.user").getOrElse(""))
  	factory.setPassword(Play.current.configuration.getString("mq.default.password").getOrElse(""))
