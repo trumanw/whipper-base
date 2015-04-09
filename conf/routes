@@ -3,6 +3,7 @@
 
 # Home page
 GET     /                           controllers.Application.index
+GET 	/recv 						controllers.Application.send
 
 # Catalog "handler" :
 # - "whipper.catalog.add"

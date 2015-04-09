@@ -3,10 +3,17 @@ package controllers
 import play.api._
 import play.api.mvc._
 
+import utils._
+
 object Application extends Controller {
 
 	def index = Action {
 		Ok("whipper-base is ready.")
+	}
+
+	def send = Action {
+		UpdateProducer.send
+		Ok("")
 	}
 
 }

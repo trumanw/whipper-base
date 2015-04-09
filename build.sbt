@@ -20,8 +20,6 @@ libraryDependencies ++= Seq(
     "com.typesafe.akka" % "akka-actor_2.10" % "2.3.5",
     "org.apache.commons" % "commons-math3" % "3.3",
     "com.rabbitmq" % "amqp-client" % "3.4.4",
-    "org.apache.activemq" % "activemq-all" % "5.9.0",
-    "org.apache.activemq" % "activemq-pool" % "5.9.0",
     "org.xerial.snappy" % "snappy-java" % "1.1.1.3",
     "net.liftweb" %% "lift-json" % "2.5+"
 )
