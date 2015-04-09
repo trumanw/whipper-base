@@ -10,6 +10,8 @@ import play.api.libs.json._
 import play.api.cache.Cached
 import play.api.cache.Cache
 
+import scala.collection.mutable.ListBuffer
+
 // Akka imports
 import akka.pattern.ask
 import akka.util.Timeout
@@ -20,7 +22,7 @@ import akka.actor.{Props, ActorSystem}
 
 import models._
 import models.CatalogsActor.{CatalogQuery, CatalogRetrieve, CatalogAdd, CatalogDelete, CatalogUpdate}
-import models.CatalogsActor.{CatalogElemsUnion, CatalogElemsAppend, CatalogElemsRemove, CatalogElemsClean}
+import models.CatalogsActor.{CatalogElemsAppend, CatalogElemsRemove, CatalogElemsClean}
 import models.CatalogResultStatus._
 
 import globals._
@@ -29,28 +31,6 @@ object CatalogCtrl extends Controller with CatalogJSONTrait {
 	implicit val timeout = Timeout(5 seconds)
 	implicit lazy val system = ActorSystem()
 	implicit lazy val catalogActor = system.actorOf(Props[CatalogsActor])
-
-	def union(id: Long) = Action {
-		var retOpt = None: Option[CatalogResult]
-
-		val future = catalogActor ? CatalogElemsUnion(id)
-		retOpt = Await.result(future, timeout.duration)
-					.asInstanceOf[Option[CatalogResult]]
-
-		if (retOpt.isDefined) {
-			val catalogResult = retOpt.get
-			catalogResult.status match {
-				case Some(200) => {
-					Status(CATALOG_OK.get)(Json.toJson(retOpt.get))
-				}
-				case _ => {
-					Status(catalogResult.status.get)
-				}
-			}
-		} else {
-			InternalServerError
-		}
-	}
 
 	def retrieve(id: Long) = Action {
 		var retOpt = None: Option[CatalogResult]

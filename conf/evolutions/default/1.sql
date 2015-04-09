@@ -53,13 +53,13 @@ CREATE TABLE `exam` (
 CREATE TABLE `catalog` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Tag PRIMARY KEY',
   `name` text COMMENT 'name of the tag',
-  `mpath` varchar(255) NOT NULL DEFAULT '0' COMMENT 'materialized path',
+  `supid` varchar(255) NOT NULL DEFAULT '0' COMMENT 'materialized path',
   `struct` text COMMENT 'Set of Question''s id',
   `update_time` int(10) NOT NULL DEFAULT '0',
   `init_time` int(10) NOT NULL DEFAULT '0',
   `tombstone` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  FULLTEXT KEY `MPathIndex` (`mpath`)
+  FULLTEXT KEY `CompositeSupID` (`supid`)
 ) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 # --- !Downs

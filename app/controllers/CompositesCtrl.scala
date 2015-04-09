@@ -14,6 +14,9 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import akka.actor.{Props, ActorSystem}
 
+import net.liftweb.json._
+import net.liftweb.json.Serialization.write
+
 import models._
 import models.CompositesActor.{CompositeRetrieve, CompositeAdd, CompositeUpdate, CompositeDelete}
 import models.CompositesActor.{CompositeStructAppend, CompositeStructRemove, CompositeStructClean}
@@ -26,12 +29,13 @@ object CompositesCtrl extends Controller
 
     implicit val timeout = Timeout(5 seconds)
     implicit lazy val system = ActorSystem()
-    implicit lazy val cqActor = system.actorOf(Props[CompositesActor])
+    implicit lazy val compositeActor = system.actorOf(Props[CompositesActor])
+    implicit lazy val questionActor = system.actorOf(Props[QuestionsActor])
 
     def retrieve(id: Long) = Action {
         var retOpt = None: Option[CompositeResult]
 
-        val future = cqActor ? CompositeRetrieve(id)
+        val future = compositeActor ? CompositeRetrieve(id)
         retOpt = Await.result(future, timeout.duration)
                     .asInstanceOf[Option[CompositeResult]]
 
@@ -45,6 +49,34 @@ object CompositesCtrl extends Controller
                     Status(compositeResult.status.get)
                 }
             }
+        } else {
+            InternalServerError
+        }
+    }
+
+    def struct(id: Long) = Action {
+        var retStructUnfoldComposite = None: Option[List[StructElemEx]]
+        implicit val formats = DefaultFormats
+
+        val compositeFuture = compositeActor ? CompositeRetrieve(id)
+        val compositeResult = Await.result(compositeFuture, timeout.duration)
+                                .asInstanceOf[Option[CompositeResult]]
+        if (compositeResult.isDefined) {
+            compositeResult.get.status match {
+                case Some(200) => {
+                    val composite = compositeResult.get.composite.get
+                    if (composite.struct.isDefined) {
+                        val structListComposite = composite.struct.get
+                        retStructUnfoldComposite = StructElem.unfoldListIterate(structListComposite)
+                    }
+                }
+                case _ => {}
+            }
+        }
+
+        if (retStructUnfoldComposite.isDefined) {
+            val retJSON = write(retStructUnfoldComposite.get)
+            Status(200)(Json.parse(retJSON.toString))
         } else {
             InternalServerError
         }
@@ -75,37 +107,37 @@ object CompositesCtrl extends Controller
 
                 handler match {
                     case Some("whipper.composites.add") => {
-                        val future = cqActor ? CompositeAdd(
+                        val future = compositeActor ? CompositeAdd(
                             composite)
                         retOpt = Await.result(future, timeout.duration)
                                     .asInstanceOf[Option[CompositeResult]]
                     }
                     case Some("whipper.composites.update") => {
-                        val future = cqActor ? CompositeUpdate(
+                        val future = compositeActor ? CompositeUpdate(
                             composite)
                         retOpt = Await.result(future, timeout.duration)
                                     .asInstanceOf[Option[CompositeResult]]
                     }
                     case Some("whipper.composites.delete") => {
-                        val future = cqActor ? CompositeDelete(
+                        val future = compositeActor ? CompositeDelete(
                             composite)
                         retOpt = Await.result(future, timeout.duration)
                                     .asInstanceOf[Option[CompositeResult]]
                     }
                     case Some("whipper.composites.struct.append") => {
-                        val future = cqActor ? CompositeStructAppend(
+                        val future = compositeActor ? CompositeStructAppend(
                             composite)
                         retOpt = Await.result(future, timeout.duration)
                                     .asInstanceOf[Option[CompositeResult]]
                     }
                     case Some("whipper.composites.struct.remove") => {
-                        val future = cqActor ? CompositeStructRemove(
+                        val future = compositeActor ? CompositeStructRemove(
                             composite)
                         retOpt = Await.result(future, timeout.duration)
                                     .asInstanceOf[Option[CompositeResult]]
                     }
                     case Some("whipper.composites.struct.clean") => {
-                        val future = cqActor ? CompositeStructClean(
+                        val future = compositeActor ? CompositeStructClean(
                             composite)
                         retOpt = Await.result(future, timeout.duration)
                                     .asInstanceOf[Option[CompositeResult]]

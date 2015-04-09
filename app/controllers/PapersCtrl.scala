@@ -14,6 +14,9 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import akka.actor.{Props, ActorSystem}
 
+import net.liftweb.json._
+import net.liftweb.json.Serialization.write
+
 import models._
 import models.PapersActor.{PaperQuery, PaperRetrieve, PaperAdd, PaperDelete, PaperUpdate}
 import models.PapersActor.{PaperStructAppend, PaperStructRemove, PaperStructClean}
@@ -76,6 +79,34 @@ object PapersCtrl extends Controller
             InternalServerError
         }
 	}
+
+    def struct(id: Long) = Action {
+        var retStructUnfoldPaper = None: Option[List[StructElemEx]]
+        implicit val formats = DefaultFormats
+
+        val paperFuture = pActor ? PaperRetrieve(id)
+        val paperResult = Await.result(paperFuture, timeout.duration)
+                            .asInstanceOf[Option[PaperResult]]
+        if (paperResult.isDefined) {
+            paperResult.get.status match {
+                case Some(200) => {
+                    val paper = paperResult.get.paper.get
+                    if (paper.struct.isDefined) {
+                        val structListPaper = paper.struct.get
+                        retStructUnfoldPaper = StructElem.unfoldListIterate(structListPaper)
+                    }
+                }
+                case _ => {}
+            }
+        }
+
+        if (retStructUnfoldPaper.isDefined) {
+            val retJSON = write(retStructUnfoldPaper.get)
+            Status(200)(Json.parse(retJSON.toString))
+        } else {
+            InternalServerError
+        }
+    }
 
 	def action = Action { request =>
         var retOpt = None: Option[PaperResult]

@@ -14,6 +14,9 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import akka.actor.{Props, ActorSystem}
 
+import net.liftweb.json._
+import net.liftweb.json.Serialization.write
+
 import models._
 import models.ExamsActor.{ExamQuery, ExamRetrieve, ExamPublish, ExamRevoke}
 import models.PapersActor.{PaperRetrieve}
@@ -74,6 +77,34 @@ object ExamsCtrl extends Controller
         } else {
             InternalServerError
         }
+	}
+
+	def struct(id: Long) = Action {
+		var retStructUnfoldExam = None: Option[List[StructElemEx]]
+		implicit val formats = DefaultFormats
+
+		val examFuture = eActor ? ExamsActor.ExamRetrieve(id)
+		val examResult = Await.result(examFuture, timeout.duration)
+							.asInstanceOf[Option[ExamResult]]
+		if (examResult.isDefined) {
+			examResult.get.status match {
+				case Some(200) => {
+					val exam = examResult.get.exam.get
+					if (exam.struct.isDefined) {
+						val structListExam = exam.struct.get
+						retStructUnfoldExam = StructElem.unfoldListIterate(structListExam)
+					}
+				}
+				case _ => {}
+			}
+		}
+
+		if (retStructUnfoldExam.isDefined) {
+			val retJSON = write(retStructUnfoldExam.get)
+			Status(200)(Json.parse(retJSON.toString))
+		} else {
+			InternalServerError
+		}
 	}
 
 	def action = Action { request =>

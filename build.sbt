@@ -22,7 +22,8 @@ libraryDependencies ++= Seq(
     "com.rabbitmq" % "amqp-client" % "3.4.4",
     "org.apache.activemq" % "activemq-all" % "5.9.0",
     "org.apache.activemq" % "activemq-pool" % "5.9.0",
-    "org.xerial.snappy" % "snappy-java" % "1.1.1.3"
+    "org.xerial.snappy" % "snappy-java" % "1.1.1.3",
+    "net.liftweb" %% "lift-json" % "2.5+"
 )
 
 scalacOptions += "-feature"

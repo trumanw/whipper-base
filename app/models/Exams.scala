@@ -36,8 +36,8 @@ case class ExamPOJO(
 
 case class Exam(
 	var name: Option[String] = None,
-	var attrs: Option[List[PaperAttrsElem]] = None,
-	var struct: Option[List[PaperStructElem]] = None,
+	var attrs: Option[List[AttrsElem]] = None,
+	var struct: Option[List[StructElem]] = None,
 	var uppertime: Option[Long] = Option(0),
 	var lowertime: Option[Long] = Option(0),
 	var duration: Option[Long] = Option(0),
@@ -130,11 +130,11 @@ object Exams extends ExamJSONTrait {
 
 	private def getClassFromPOJO(
 		ePOJO: ExamPOJO): Exam = {
-		var attrsListOpt = None: Option[List[PaperAttrsElem]]
+		var attrsListOpt = None: Option[List[AttrsElem]]
 		if (ePOJO.attrs.isDefined) {
 			val attrsListJSON = Json.parse(Snoopy.decomp(ePOJO.attrs).get)
-			attrsListJSON.validate[List[PaperAttrsElem]] match {
-				case s: JsSuccess[List[PaperAttrsElem]] => {
+			attrsListJSON.validate[List[AttrsElem]] match {
+				case s: JsSuccess[List[AttrsElem]] => {
 					attrsListOpt = Option(s.get)
 				}
 				case e: JsError => {
@@ -143,11 +143,11 @@ object Exams extends ExamJSONTrait {
 			}
 		}
 
-		var structListOpt = None: Option[List[PaperStructElem]]
+		var structListOpt = None: Option[List[StructElem]]
 		if (ePOJO.struct.isDefined) {
 			val structListJSON = Json.parse(Snoopy.decomp(ePOJO.struct).get)
-			structListJSON.validate[List[PaperStructElem]] match {
-				case s: JsSuccess[List[PaperStructElem]] => {
+			structListJSON.validate[List[StructElem]] match {
+				case s: JsSuccess[List[StructElem]] => {
 					structListOpt = Option(s.get)
 				}
 				case e: JsError => {

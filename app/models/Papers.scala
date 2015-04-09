@@ -30,18 +30,6 @@ object PaperResultStatus {
 	def PAPER_OK = { Option(200) }
 }
 
-case class PaperAttrsElem(
-	var name: Option[String] = None,
-	var value: Option[String] = None)
-
-// tag :
-// - Some("Question") : the elem represents a Question object
-// - Some("Composite") : the elem represents a Composite object
-case class PaperStructElem(
-	var id: Option[Long] = None,
-	var tag: Option[String] = None,
-	var index: Option[Int] = None)
-
 case class PaperPOJO(
 	var name: Option[String] = None,
 	var attrs: Option[String] = None,
@@ -54,8 +42,8 @@ case class PaperPOJO(
 
 case class Paper(
 	var name: Option[String] = None,
-	var attrs: Option[List[PaperAttrsElem]] = None,
-	var struct: Option[List[PaperStructElem]] = None,
+	var attrs: Option[List[AttrsElem]] = None,
+	var struct: Option[List[StructElem]] = None,
 	var status: Option[Int] = Option(PaperStatus.EDITING),
 	var tombstone: Option[Int] = Option(0),
 	var updtime: Option[Long] = Option(0),
@@ -87,19 +75,17 @@ class Papers(tag: Tag)
 			(PaperPOJO.tupled, PaperPOJO.unapply _)
 }
 
-trait PapersJSONTrait {
+trait PapersJSONTrait 
+	extends AttrsElemJSONTrait 
+	with StructElemJSONTrait {
 	// JSON default formats
-	implicit val PaperStructElemFormat = Json.format[PaperStructElem]
-	implicit val PaperAttrsElemFormat = Json.format[PaperAttrsElem]
 	implicit val PaperPOJOFormat = Json.format[PaperPOJO]
 	implicit val PaperFormat = Json.format[Paper]
 	implicit val PaperResultFormat = Json.format[PaperResult]
 	implicit val PaperListResultFormat = Json.format[PaperListResult]
 }
 
-object Papers extends PapersJSONTrait 	
-	with CompositesJSONTrait 
-	with QuestionsJSONTrait {
+object Papers extends PapersJSONTrait {
 	// ORM table of Paper
 	val table = TableQuery[Papers]
 
@@ -147,11 +133,11 @@ object Papers extends PapersJSONTrait
 
 	private def getClassFromPOJO(
 		pPOJO: PaperPOJO): Paper = {
-		var attrsListOpt = None: Option[List[PaperAttrsElem]]
+		var attrsListOpt = None: Option[List[AttrsElem]]
 		if (pPOJO.attrs.isDefined) {
 			val attrsListJSON = Json.parse(Snoopy.decomp(pPOJO.attrs).get)
-			attrsListJSON.validate[List[PaperAttrsElem]] match {
-				case s: JsSuccess[List[PaperAttrsElem]] => {
+			attrsListJSON.validate[List[AttrsElem]] match {
+				case s: JsSuccess[List[AttrsElem]] => {
 					attrsListOpt = Option(s.get)
 				}
 				case e: JsError => {
@@ -160,11 +146,11 @@ object Papers extends PapersJSONTrait
 			}
 		}
 
-		var structListOpt = None: Option[List[PaperStructElem]]
+		var structListOpt = None: Option[List[StructElem]]
 		if (pPOJO.struct.isDefined) {
 			val structListJSON = Json.parse(Snoopy.decomp(pPOJO.struct).get)
-			structListJSON.validate[List[PaperStructElem]] match {
-				case s: JsSuccess[List[PaperStructElem]] => {
+			structListJSON.validate[List[StructElem]] match {
+				case s: JsSuccess[List[StructElem]] => {
 					structListOpt = Option(s.get)
 				}
 				case e: JsError => {
@@ -196,151 +182,6 @@ object Papers extends PapersJSONTrait
 		if (srcPOJO.struct.isDefined) {
 			dstPOJO.struct = srcPOJO.struct
 		}
-	}
-
-	private def structListDiff(
-		srcStructList: List[PaperStructElem],
-		rmvStructList: List[PaperStructElem]): Option[List[PaperStructElem]] = {
-		var dstStructListOpt = None: Option[List[PaperStructElem]]
-
-		val structDiffListBuffer = new ListBuffer[PaperStructElem]()
-        val structDiffIDListBuffer = new ListBuffer[Long]()
-
-        // add all id of srcStructList to structDiffIDListBuffer
-        for (structElem <- srcStructList) {
-            structDiffIDListBuffer += structElem.id.get
-        }
-        structDiffListBuffer ++= srcStructList
-
-        for (structElemRemoved <- rmvStructList) {
-            val structElemRemovedIDOpt = structElemRemoved.id
-            if (structElemRemovedIDOpt.isDefined) {
-                structDiffIDListBuffer.indexOf(structElemRemovedIDOpt.get) match {
-                    case -1 => {
-                        // do nothing
-                    }
-                    case a: Int => {
-                        structDiffListBuffer -= srcStructList(a)
-                    }
-                }
-            }
-        }
-        dstStructListOpt = Option(structDiffListBuffer.toList)
-
-		dstStructListOpt
-	}
-
-	private def structListUnion(
-		srcStructList: List[PaperStructElem],
-		addStructList: List[PaperStructElem]): Option[List[PaperStructElem]] = {
-		var dstStructListOpt = None: Option[List[PaperStructElem]]
-
-		val structUnionIDListBuffer = new ListBuffer[Long]()
-        val dstStructListBuffer = new ListBuffer[PaperStructElem]()
-
-        // add all id of srcStructList to structUnionIDListBuffer
-        for (structElem <- srcStructList) {
-            structUnionIDListBuffer += structElem.id.get
-        }
-        dstStructListBuffer ++= srcStructList
-
-        for (structElemUnion <- addStructList) {
-            val structElemUnionIDOpt = structElemUnion.id
-            if (structElemUnionIDOpt.isDefined) {
-                structUnionIDListBuffer.indexOf(structElemUnionIDOpt.get) match {
-                    case -1 => {
-                        // append to dstStructListBuffer
-                        structElemUnion.index = None
-                        dstStructListBuffer += structElemUnion
-                    }
-                    case a: Int => {
-                        // remove the original
-                        dstStructListBuffer.remove(a)
-                        
-                        if (structElemUnion.index.isDefined) {
-                            // add the new structElemUnion with its new index
-                            val indexOfStructElemUion = structElemUnion.index.get
-                            dstStructListBuffer.insert(indexOfStructElemUion, structElemUnion)
-                        } else {
-                            // otherwise, append it to the tail
-                            structElemUnion.index = None
-                            dstStructListBuffer += structElemUnion      
-                        }
-                    }
-                }
-            }
-        }
-        dstStructListOpt = Option(dstStructListBuffer.toList)
-
-		dstStructListOpt
-	}
-
-	private def attrsListDiff(
-		srcAttrsList: List[PaperAttrsElem],
-		rmvAttrsList: List[PaperAttrsElem]): Option[List[PaperAttrsElem]] = {
-		var dstAttrsListOpt = None: Option[List[PaperAttrsElem]]
-
-		val attrsUnionListBuffer = new ListBuffer[PaperAttrsElem]()
-		val attrsUnionNameListBuffer = new ListBuffer[String]()
-
-		// add all names os srcAttrsList to attrsUnionNameListBuffer
-		for (attrsElem <- srcAttrsList) {
-			attrsUnionNameListBuffer += attrsElem.name.get
-		}
-		attrsUnionListBuffer ++= srcAttrsList
-
-		for (attrsElemRemoved <- rmvAttrsList) {
-			val attrsElemRemovedNameOpt = attrsElemRemoved.name
-			if (attrsElemRemovedNameOpt.isDefined) {
-				attrsUnionNameListBuffer.indexOf(attrsElemRemovedNameOpt.get) match {
-					case -1 => {
-						// do nothing
-					}
-					case a: Int => {
-						attrsUnionListBuffer -= srcAttrsList(a)
-					}
-				}
-			}
-		}
-		dstAttrsListOpt = Option(attrsUnionListBuffer.toList)
-
-		dstAttrsListOpt
-	}
-
-	private def attrsListUnion(
-		srcAttrsList: List[PaperAttrsElem], 
-		addAttrsList: List[PaperAttrsElem]): Option[List[PaperAttrsElem]] = {
-		var dstAttrsListOpt = None: Option[List[PaperAttrsElem]]
-
-		val attrsUnionListBuffer = new ListBuffer[PaperAttrsElem]()
-		val attrsUnionNameListBuffer = new ListBuffer[String]()
-
-		// add all names os srcAttrsList to attrsUnionNameListBuffer
-		for (attrsElem <- srcAttrsList) {
-			attrsUnionNameListBuffer += attrsElem.name.get
-		}
-		attrsUnionListBuffer ++= srcAttrsList
-
-		for (attrsElemUpdated <- addAttrsList) {
-			val attrsElemUpdatedNameOpt = attrsElemUpdated.name
-			val attrsElemUpdatedValueOpt = attrsElemUpdated.value
-			if (attrsElemUpdatedNameOpt.isDefined) {
-				attrsUnionNameListBuffer.indexOf(attrsElemUpdatedNameOpt.get) match {
-					case -1 => {
-						// add to the end of the attrs list buffer
-						attrsUnionListBuffer += attrsElemUpdated
-					}
-					case a: Int => {
-						// modify the value of the existed name in the list buffer
-						val attrsElemInListBuffer = attrsUnionListBuffer(a)
-						attrsElemInListBuffer.value = attrsElemUpdatedValueOpt
-					}
-				}
-			}
-		}
-		dstAttrsListOpt = Option(attrsUnionListBuffer.toList)
-			
-		dstAttrsListOpt
 	}
 
 	def add(paper: Paper)
@@ -490,14 +331,14 @@ object Papers extends PapersJSONTrait
     			val queryPOJO = queryPOJOOpt.get
     			val queryPaper = getClassFromPOJO(queryPOJO)
 
-    			var attrsListUpdatedFinal = None: Option[List[PaperAttrsElem]]
+    			var attrsListUpdatedFinal = None: Option[List[AttrsElem]]
     			if (queryPaper.attrs.isDefined) {
     				val queryPaperAttrsList = queryPaper.attrs.get
-    				attrsListUpdatedFinal = attrsListUnion(
+    				attrsListUpdatedFinal = AttrsElem.attrsListUnion(
     						queryPaperAttrsList, attrsListUpdated)
 				} else {
-					val queryPaperAttrsList = List[PaperAttrsElem]()
-					attrsListUpdatedFinal = attrsListUnion(
+					val queryPaperAttrsList = List[AttrsElem]()
+					attrsListUpdatedFinal = AttrsElem.attrsListUnion(
 							queryPaperAttrsList, attrsListUpdated)        					
 				}
 
@@ -549,10 +390,10 @@ object Papers extends PapersJSONTrait
     			val queryPOJO = queryPOJOOpt.get
     			val queryPaper = getClassFromPOJO(queryPOJO)
 
-    			var attrsListUpdatedFinal = None: Option[List[PaperAttrsElem]]
+    			var attrsListUpdatedFinal = None: Option[List[AttrsElem]]
     			if (queryPaper.attrs.isDefined) {
     				val queryPaperAttrsList = queryPaper.attrs.get
-    				attrsListUpdatedFinal = attrsListDiff(
+    				attrsListUpdatedFinal = AttrsElem.attrsListDiff(
     						queryPaperAttrsList, attrsListRemoved)
     			}
 
@@ -645,14 +486,14 @@ object Papers extends PapersJSONTrait
         		val queryPOJO = queryPOJOOpt.get
     			val queryPaper = getClassFromPOJO(queryPOJO)
 
-    			var structListUpdatedFinal = None: Option[List[PaperStructElem]]
+    			var structListUpdatedFinal = None: Option[List[StructElem]]
     			if (queryPaper.struct.isDefined) {
     				val queryPaperStructList = queryPaper.struct.get
-    				structListUpdatedFinal = structListUnion(
+    				structListUpdatedFinal = StructElem.structListUnion(
     						queryPaperStructList, structUpdatedList)
 				} else {
-					val queryPaperStructList = List[PaperStructElem]()
-					structListUpdatedFinal = structListUnion(
+					val queryPaperStructList = List[StructElem]()
+					structListUpdatedFinal = StructElem.structListUnion(
 							queryPaperStructList, structUpdatedList)        					
 				}
 
@@ -705,10 +546,10 @@ object Papers extends PapersJSONTrait
         		val queryPOJO = queryPOJOOpt.get
     			val queryPaper = getClassFromPOJO(queryPOJO)
 
-    			var structListUpdatedFinal = None: Option[List[PaperStructElem]]
+    			var structListUpdatedFinal = None: Option[List[StructElem]]
     			if (queryPOJO.struct.isDefined) {
     				val queryPaperStructList = queryPaper.struct.get
-    				structListUpdatedFinal = structListDiff(
+    				structListUpdatedFinal = StructElem.structListDiff(
     						queryPaperStructList, structRemovedList)
     			}
 

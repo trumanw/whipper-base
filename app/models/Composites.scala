@@ -17,15 +17,6 @@ import scala.collection.mutable.ListBuffer
 import utils._
 import globals._
 
-
-// tag :
-// - Some("Question") : the elem represents a Question object
-// - Some("Composite") : the elem represents a Composite object
-case class CompositeStructElem(
-    var id: Option[Long] = None,
-    var tag: Option[String] = None,
-    var index: Option[Int] = None)
-
 case class CompositePOJO(
     var content: Option[String] = None,
     var struct: Option[String] = None,
@@ -36,7 +27,7 @@ case class CompositePOJO(
 
 case class Composite (
     var content: Option[String] = None,
-    var struct: Option[List[CompositeStructElem]] = None,
+    var struct: Option[List[StructElem]] = None,
     var tombstone: Option[Int] = Option(0),
     var updtime: Option[Long] = Option(0),
     var inittime: Option[Long] = Option(0),
@@ -66,15 +57,14 @@ class Composites(tag: Tag)
             (CompositePOJO.tupled, CompositePOJO.unapply _)
 }
 
-trait CompositesJSONTrait {
+trait CompositesJSONTrait extends StructElemJSONTrait{
     // JSON default formats
-    implicit val CompositeStructElemFormat = Json.format[CompositeStructElem]
     implicit val CompositePOJOFormat = Json.format[CompositePOJO]
     implicit val CompositeFormat = Json.format[Composite]
     implicit val CompositeResultFormat = Json.format[CompositeResult]
 }
 
-object Composites extends CompositesJSONTrait with QuestionsJSONTrait {
+object Composites extends CompositesJSONTrait {
     // ORM table of Composite
     val table = TableQuery[Composites]
 
@@ -114,11 +104,11 @@ object Composites extends CompositesJSONTrait with QuestionsJSONTrait {
 
     private def getClassFromPOJO(
         cPOJO: CompositePOJO): Composite = {
-        var structListOpt = None: Option[List[CompositeStructElem]]
+        var structListOpt = None: Option[List[StructElem]]
         if (cPOJO.struct.isDefined) {
             val structListJSON = Json.parse(Snoopy.decomp(cPOJO.struct).get)
-            structListJSON.validate[List[CompositeStructElem]] match {
-                case s: JsSuccess[List[CompositeStructElem]] => {
+            structListJSON.validate[List[StructElem]] match {
+                case s: JsSuccess[List[StructElem]] => {
                     structListOpt = Option(s.get)
                 }
                 case e: JsError => {
@@ -149,83 +139,6 @@ object Composites extends CompositesJSONTrait with QuestionsJSONTrait {
             dstPOJO.updtime = srcPOJO.updtime
         }
     }
-
-    private def structListDiff(
-        srcStructList: List[CompositeStructElem],
-        rmvStructList: List[CompositeStructElem]): Option[List[CompositeStructElem]] = {
-        var dstStructListOpt = None: Option[List[CompositeStructElem]]
-
-        val structDiffListBuffer = new ListBuffer[CompositeStructElem]()
-        val structDiffIDListBuffer = new ListBuffer[Long]()
-
-        // add all id of srcStructList to structDiffIDListBuffer
-        for (structElem <- srcStructList) {
-            structDiffIDListBuffer += structElem.id.get
-        }
-        structDiffListBuffer ++= srcStructList
-
-        for (structElemRemoved <- rmvStructList) {
-            val structElemRemovedIDOpt = structElemRemoved.id
-            if (structElemRemovedIDOpt.isDefined) {
-                structDiffIDListBuffer.indexOf(structElemRemovedIDOpt.get) match {
-                    case -1 => {
-                        // do nothing
-                    }
-                    case a: Int => {
-                        structDiffListBuffer -= srcStructList(a)
-                    }
-                }
-            }
-        }
-        dstStructListOpt = Option(structDiffListBuffer.toList)
-
-        dstStructListOpt
-    }
-
-    private def structListUnion(
-        srcStructList: List[CompositeStructElem],
-        addStructList: List[CompositeStructElem]): Option[List[CompositeStructElem]] = {
-        var dstStructListOpt = None: Option[List[CompositeStructElem]]
-
-        val structUnionIDListBuffer = new ListBuffer[Long]()
-        val dstStructListBuffer = new ListBuffer[CompositeStructElem]()
-
-        // add all id of srcStructList to structUnionIDListBuffer
-        for (structElem <- srcStructList) {
-            structUnionIDListBuffer += structElem.id.get
-        }
-        dstStructListBuffer ++= srcStructList
-
-        for (structElemUnion <- addStructList) {
-            val structElemUnionIDOpt = structElemUnion.id
-            if (structElemUnionIDOpt.isDefined) {
-                structUnionIDListBuffer.indexOf(structElemUnionIDOpt.get) match {
-                    case -1 => {
-                        // append to dstStructListBuffer
-                        structElemUnion.index = None
-                        dstStructListBuffer += structElemUnion
-                    }
-                    case a: Int => {
-                        // remove the original
-                        dstStructListBuffer.remove(a)
-                        
-                        if (structElemUnion.index.isDefined) {
-                            // add the new structElemUnion with its new index
-                            val indexOfStructElemUion = structElemUnion.index.get
-                            dstStructListBuffer.insert(indexOfStructElemUion, structElemUnion)
-                        } else {
-                            // otherwise, append it to the tail
-                            structElemUnion.index = None
-                            dstStructListBuffer += structElemUnion      
-                        }
-                    }
-                }
-            }
-        }
-        dstStructListOpt = Option(dstStructListBuffer.toList)
-
-        dstStructListOpt
-    } 
 
     def add(composite: Composite)
         (implicit session: Session): Option[CompositeResult] = {
@@ -369,14 +282,14 @@ object Composites extends CompositesJSONTrait with QuestionsJSONTrait {
                 val queryPOJO = queryPOJOOpt.get
                 val queryComposite = getClassFromPOJO(queryPOJO)
 
-                var structListUpdatedFinal = None: Option[List[CompositeStructElem]]
+                var structListUpdatedFinal = None: Option[List[StructElem]]
                 if (queryComposite.struct.isDefined) {
                     val queryCompositeStructList = queryComposite.struct.get
-                    structListUpdatedFinal = structListUnion(
+                    structListUpdatedFinal = StructElem.structListUnion(
                             queryCompositeStructList, structUpdatedList)
                 } else {
-                    val queryCompositeStructList = List[CompositeStructElem]()
-                    structListUpdatedFinal = structListUnion(
+                    val queryCompositeStructList = List[StructElem]()
+                    structListUpdatedFinal = StructElem.structListUnion(
                             queryCompositeStructList, structUpdatedList)                
                 }
 
@@ -430,10 +343,10 @@ object Composites extends CompositesJSONTrait with QuestionsJSONTrait {
                 val queryPOJO = queryPOJOOpt.get
                 val queryComposite = getClassFromPOJO(queryPOJO)
 
-                var structListUpdatedFinal = None: Option[List[CompositeStructElem]]
+                var structListUpdatedFinal = None: Option[List[StructElem]]
                 if (queryPOJO.struct.isDefined) {
                     val queryCompositeStructList = queryComposite.struct.get
-                    structListUpdatedFinal = structListDiff(
+                    structListUpdatedFinal = StructElem.structListDiff(
                             queryCompositeStructList, structRemovedList)
                 }
 

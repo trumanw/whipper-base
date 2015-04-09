@@ -15,10 +15,6 @@ import akka.actor.Actor
 
 import utils._
 
-case class QuestionAttrsElem(
-    var name: Option[String] = None,
-    var value: Option[String] = None)
-
 case class QuestionChoicesElem(
     var choice: Option[String] = None,
     var bingo: Option[Int] = None)
@@ -36,7 +32,7 @@ case class QuestionPOJO (
 case class Question (
     var content: Option[String] = None,
     var choices: Option[List[QuestionChoicesElem]] = None,
-    var attrs: Option[List[QuestionAttrsElem]] = None,
+    var attrs: Option[List[AttrsElem]] = None,
     var score: Option[Double] = Option(0),
     var tombstone: Option[Int] = Option(0),
     var updtime: Option[Long] = Option(0),
@@ -69,24 +65,25 @@ class Questions(tag: Tag)
             (QuestionPOJO.tupled, QuestionPOJO.unapply _)
 }
 
-trait QuestionsJSONTrait {
+trait QuestionsJSONTrait extends AttrsElemJSONTrait {
     // JSON default formats
-    implicit val QuestionAttrsElemFormat = Json.format[QuestionAttrsElem]
     implicit val QuestionChoicesElemFormat = Json.format[QuestionChoicesElem]
     implicit val QuestionPOJOFormat = Json.format[QuestionPOJO]
     implicit val QuestionFormat = Json.format[Question]
     implicit val QuestionResultFormat = Json.format[QuestionResult]
 }
 
-object Questions extends QuestionsJSONTrait {
+object Questions 
+    extends QuestionsJSONTrait 
+    with AttrsElemJSONTrait {
     // ORM table of Question
     val table = TableQuery[Questions]
 
     private def attrsJSON2Object(
-        attrsJsArray: JsArray): Option[List[QuestionAttrsElem]] = {
-        var attrsListOpt = None: Option[List[QuestionAttrsElem]]
-        attrsJsArray.validate[List[QuestionAttrsElem]] match {
-            case s: JsSuccess[List[QuestionAttrsElem]] => {
+        attrsJsArray: JsArray): Option[List[AttrsElem]] = {
+        var attrsListOpt = None: Option[List[AttrsElem]]
+        attrsJsArray.validate[List[AttrsElem]] match {
+            case s: JsSuccess[List[AttrsElem]] => {
                 attrsListOpt = Option(s.get)
             }
             case e: JsError => {
@@ -94,74 +91,6 @@ object Questions extends QuestionsJSONTrait {
             }
         }
         attrsListOpt
-    }
-
-    private def attrsListDiff(
-        srcAttrsList: List[QuestionAttrsElem],
-        rmvAttrsList: List[QuestionAttrsElem]): Option[List[QuestionAttrsElem]] = {
-        var dstAttrsListOpt = None: Option[List[QuestionAttrsElem]]
-
-        val attrsDiffListBuffer = new ListBuffer[QuestionAttrsElem]()
-        val attrsDiffNameListBuffer = new ListBuffer[String]()
-
-        // add all names of srcAttrsList to attrsDiffNameListBuffer
-        for (attrsElem <- srcAttrsList) {
-            attrsDiffNameListBuffer += attrsElem.name.get
-        }
-        attrsDiffListBuffer ++= srcAttrsList
-
-        for (attrsElemRemoved <- rmvAttrsList) {
-            val attrsElemRemovedNameOpt = attrsElemRemoved.name
-            if (attrsElemRemovedNameOpt.isDefined) {
-                attrsDiffNameListBuffer.indexOf(attrsElemRemovedNameOpt.get) match {
-                    case -1 => {
-                        // do nothing
-                    }
-                    case a: Int => {
-                        attrsDiffListBuffer -= srcAttrsList(a)
-                    }
-                }
-            }
-        }
-        dstAttrsListOpt = Option(attrsDiffListBuffer.toList)
-
-        dstAttrsListOpt
-    }
-
-    private def attrsListUnion(
-        srcAttrsList: List[QuestionAttrsElem], 
-        addAttrsList: List[QuestionAttrsElem]): Option[List[QuestionAttrsElem]] = {
-        var dstAttrsListOpt = None: Option[List[QuestionAttrsElem]]
-
-        val attrsUnionListBuffer = new ListBuffer[QuestionAttrsElem]()
-        val attrsUnionNameListBuffer = new ListBuffer[String]()
-
-        // add all names os srcAttrsList to attrsUnionNameListBuffer
-        for (attrsElem <- srcAttrsList) {
-            attrsUnionNameListBuffer += attrsElem.name.get
-        }
-        attrsUnionListBuffer ++= srcAttrsList
-
-        for (attrsElemUpdated <- addAttrsList) {
-            val attrsElemUpdatedNameOpt = attrsElemUpdated.name
-            val attrsElemUpdatedValueOpt = attrsElemUpdated.value
-            if (attrsElemUpdatedNameOpt.isDefined) {
-                attrsUnionNameListBuffer.indexOf(attrsElemUpdatedNameOpt.get) match {
-                    case -1 => {
-                        // add to the end of the attrs list buffer
-                        attrsUnionListBuffer += attrsElemUpdated
-                    }
-                    case a: Int => {
-                        // modify the value of the existed name in the list buffer
-                        val attrsElemInListBuffer = attrsUnionListBuffer(a)
-                        attrsElemInListBuffer.value = attrsElemUpdatedValueOpt
-                    }
-                }
-            }
-        }
-        dstAttrsListOpt = Option(attrsUnionListBuffer.toList)
-            
-        dstAttrsListOpt
     }
 
     private def getPOJOFromClass(
@@ -221,11 +150,11 @@ object Questions extends QuestionsJSONTrait {
             }
         }
 
-        var attrsListOpt = None: Option[List[QuestionAttrsElem]]
+        var attrsListOpt = None: Option[List[AttrsElem]]
         if (qPOJO.attrs.isDefined) {
             val attrsListJSON = Json.parse(Snoopy.decomp(qPOJO.attrs).get)
-            attrsListJSON.validate[List[QuestionAttrsElem]] match {
-                case s: JsSuccess[List[QuestionAttrsElem]] => {
+            attrsListJSON.validate[List[AttrsElem]] match {
+                case s: JsSuccess[List[AttrsElem]] => {
                     attrsListOpt = Option(s.get)
                 }
                 case e: JsError => {
@@ -413,7 +342,7 @@ object Questions extends QuestionsJSONTrait {
             if (questionOpt.isDefined) {
                 val queryQuestion = questionOpt.get
 
-                var attrsListUpdatedFinal = None: Option[List[QuestionAttrsElem]]
+                var attrsListUpdatedFinal = None: Option[List[AttrsElem]]
                 if (queryQuestion.attrs.isDefined) {
                     // attrs is not null
                     // update the original attrs with attrsListUpdated
@@ -422,14 +351,14 @@ object Questions extends QuestionsJSONTrait {
                     val queryQuestionAttrsListOpt = attrsJSON2Object(queryQuestionAttrsJsArray)
                     if (queryQuestionAttrsListOpt.isDefined) {
                         val queryQuestionAttrsList = queryQuestionAttrsListOpt.get
-                        attrsListUpdatedFinal = attrsListUnion(
+                        attrsListUpdatedFinal = AttrsElem.attrsListUnion(
                             queryQuestionAttrsList, attrsListUpdated)
                     }
                 } else {
                     // attrs is null
                     // init attrs with attrsListUpdated
-                    val queryQuestionAttrsList = List[QuestionAttrsElem]()
-                    attrsListUpdatedFinal = attrsListUnion(
+                    val queryQuestionAttrsList = List[AttrsElem]()
+                    attrsListUpdatedFinal = AttrsElem.attrsListUnion(
                             queryQuestionAttrsList, attrsListUpdated)
                 }
 
@@ -483,7 +412,7 @@ object Questions extends QuestionsJSONTrait {
                                 .take(1).firstOption
             if (questionOpt.isDefined) {
                 val queryQuestion = questionOpt.get
-                var attrsListUpdatedFinal = None: Option[List[QuestionAttrsElem]]
+                var attrsListUpdatedFinal = None: Option[List[AttrsElem]]
                 if (queryQuestion.attrs.isDefined) {
                     // only remove attrs elems when attrs is not null
                     val queryQuestionAttrsJsArray = Json.parse(
@@ -491,7 +420,7 @@ object Questions extends QuestionsJSONTrait {
                     val queryQuestionAttrsListOpt = attrsJSON2Object(queryQuestionAttrsJsArray)
                     if (queryQuestionAttrsListOpt.isDefined) {
                         val queryQuestionAttrsList = queryQuestionAttrsListOpt.get
-                        attrsListUpdatedFinal = attrsListDiff(
+                        attrsListUpdatedFinal = AttrsElem.attrsListDiff(
                             queryQuestionAttrsList, attrsListRemoved)
                     }
                 }

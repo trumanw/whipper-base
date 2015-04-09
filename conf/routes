@@ -15,7 +15,6 @@ PATCH 	/catalogs  								controllers.CatalogCtrl.action
 
 GET 	/catalogs/:id 							controllers.CatalogCtrl.retrieve(id: Long)
 GET 	/catalogs 								controllers.CatalogCtrl.query(page: Option[Int], size: Option[Int])
-GET 	/catalogs/:id/elems 					controllers.CatalogCtrl.union(id: Long)
 
 
 # Questions "handler" :
@@ -40,6 +39,7 @@ GET 	/questions/:id 				controllers.QuestionsCtrl.retrieve(id: Long)
 POST 	/composites  				controllers.CompositesCtrl.action
 
 GET 	/composites/:id 			controllers.CompositesCtrl.retrieve(id: Long)
+GET 	/composites/:id/struct 		controllers.CompositesCtrl.struct(id: Long)
 
 
 # Papers "handler" :
@@ -58,6 +58,7 @@ POST 	/papers 					controllers.PapersCtrl.action
 
 GET 	/papers/:id 				controllers.PapersCtrl.retrieve(id: Long)
 GET 	/papers 					controllers.PapersCtrl.query(page: Option[Int], size: Option[Int])
+GET 	/papers/:id/struct 			controllers.PapersCtrl.struct(id: Long)
 
 
 # Exams "handler" :
@@ -67,3 +68,4 @@ POST 	/exams 						controllers.ExamsCtrl.action
 
 GET 	/exams/:id 					controllers.ExamsCtrl.retrieve(id: Long)
 GET 	/exams  					controllers.ExamsCtrl.query(page: Option[Int], size: Option[Int])
+GET 	/exams/:id/struct 			controllers.ExamsCtrl.struct(id: Long)
