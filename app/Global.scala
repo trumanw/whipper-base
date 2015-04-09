@@ -1,4 +1,5 @@
 package globals
+
 import play.api._
 import play.api.Play.current
 import play.api.libs.json._
@@ -22,25 +23,21 @@ object Global extends WithFilters(
 	
 	implicit lazy val db = Database.forDataSource(DB.getDataSource("default"))
 
-	// RabbitMQ
-	private val EXCAHNGE_NAME = "UpdateExchange"
-
-	private val factory: ConnectionFactory = new ConnectionFactory()
- 	factory.setHost(Play.current.configuration.getString("mq.default.url").getOrElse(""))
- 	factory.setUsername(Play.current.configuration.getString("mq.default.user").getOrElse(""))
- 	factory.setPassword(Play.current.configuration.getString("mq.default.password").getOrElse(""))
+	private val rbmqFactory: ConnectionFactory = new ConnectionFactory()
+ 	rbmqFactory.setHost(Play.current.configuration.getString("mq.default.url").getOrElse(""))
+ 	rbmqFactory.setUsername(Play.current.configuration.getString("mq.default.user").getOrElse(""))
+ 	rbmqFactory.setPassword(Play.current.configuration.getString("mq.default.password").getOrElse(""))
     private val QUEUE_NAME = "UpdateExchange"
 
-    val connection = factory.newConnection()
-    val channel = connection.createChannel()
+    val rbmqConnection = rbmqFactory.newConnection()
+    val rbmqChannel = rbmqConnection.createChannel()
 
 	override def onStart(app: Application) {
 		Logger.info("Whipper-Base service has started.")
 
-	    channel.queueDeclare(QUEUE_NAME, false, false, false, null)
+	    rbmqChannel.queueDeclare(QUEUE_NAME, false, false, false, null)
 
-	    // val consumer = new QueueingConsumer(channel)
-	    val consumer = new DefaultConsumer(channel) {
+	    val consumer = new DefaultConsumer(rbmqChannel) {
 	    	override def handleDelivery(
 	    		consumerTag: String, envelope: Envelope, 
 	    		properties: AMQP.BasicProperties, body: Array[Byte]) {
@@ -48,15 +45,15 @@ object Global extends WithFilters(
 	    	}
 	    }
 
-	    channel.basicConsume(QUEUE_NAME, true, consumer)
+	    rbmqChannel.basicConsume(QUEUE_NAME, true, consumer)
 	}
 
 	override def onStop(app: Application) {
 		Logger.info("RabbitMQ consumer channel is closing...")
-		channel.close()
+		rbmqChannel.close()
 		Logger.info("RabbitMQ consumer channel has closed!")
 		Logger.info("RabbitMQ consumer connection is closing...")
-		connection.close()
+		rbmqConnection.close()
 		Logger.info("RabbitMQ consumer connection has closed!")
 		Logger.info("Whipper-Base service has stopped.")
 	}
