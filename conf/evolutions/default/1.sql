@@ -41,6 +41,7 @@ CREATE TABLE `exam` (
   `attrs` text,
   `name` varchar(255) DEFAULT '' COMMENT 'name of the exam',
   `struct` text COMMENT 'struct of the exam',
+  `pid` int(10) unsigned DEFAULT '0',
   `uppertime` int(10) unsigned DEFAULT '0',
   `lowertime` int(10) unsigned DEFAULT '0',
   `duration` int(10) unsigned DEFAULT '0',

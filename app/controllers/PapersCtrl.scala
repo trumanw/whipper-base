@@ -18,10 +18,7 @@ import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 
 import models._
-import models.PapersActor.{PaperQuery, PaperRetrieve, PaperAdd, PaperDelete, PaperUpdate}
-import models.PapersActor.{PaperStructAppend, PaperStructRemove, PaperStructClean}
-import models.PapersActor.{PaperAttrsAppend, PaperAttrsRemove, PaperAttrsClean}
-import models.PapersActor.{PaperStatusProcess, PaperStatusReset}
+import models.PapersActor.{PaperQuery, PaperRetrieve}
 import models.PaperResultStatus._
 
 import globals._
@@ -130,76 +127,8 @@ object PapersCtrl extends Controller
         	// match the handler with the different actor methods
         	if (paperOptParseFromJSON.isDefined) {
         		val paper = paperOptParseFromJSON.get
-
-        		handler match {
-        			case Some("whipper.papers.add") => {
-        				val future = pActor ? PaperAdd(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.papers.update") => {
-        				val future = pActor ? PaperUpdate(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.papers.delete") => {
-        				val future = pActor ? PaperDelete(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.papers.struct.append") => {
-        				val future = pActor ? PaperStructAppend(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.papers.struct.remove") => {
-        				val future = pActor ? PaperStructRemove(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.papers.struct.clean") => {
-        				val future = pActor ? PaperStructClean(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.papers.attrs.append") => {
-        				val future = pActor ? PaperAttrsAppend(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.papers.attrs.remove") => {
-        				val future = pActor ? PaperAttrsRemove(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.papers.attrs.clean") => {
-        				val future = pActor ? PaperAttrsClean(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.paper.status.process") => {
-        				val future = pActor ? PaperStatusProcess(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case Some("whipper.paper.status.reset") => {
-        				val future = pActor ? PaperStatusReset(
-        							paper)
-        				retOpt = Await.result(future, timeout.duration)
-        						.asInstanceOf[Option[PaperResult]]
-        			}
-        			case _ => {}
-        		}
+        		val request = PaperRequest(handler)
+                retOpt = request.send(paper)
         	}
         }
 

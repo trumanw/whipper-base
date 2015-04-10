@@ -18,8 +18,7 @@ import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 
 import models._
-import models.CompositesActor.{CompositeRetrieve, CompositeAdd, CompositeUpdate, CompositeDelete}
-import models.CompositesActor.{CompositeStructAppend, CompositeStructRemove, CompositeStructClean}
+import models.CompositesActor.{CompositeRetrieve}
 import models.CompositeResultStatus._
 
 import globals._
@@ -30,7 +29,6 @@ object CompositesCtrl extends Controller
     implicit val timeout = Timeout(5 seconds)
     implicit lazy val system = ActorSystem()
     implicit lazy val compositeActor = system.actorOf(Props[CompositesActor])
-    implicit lazy val questionActor = system.actorOf(Props[QuestionsActor])
 
     def retrieve(id: Long) = Action {
         var retOpt = None: Option[CompositeResult]
@@ -104,46 +102,8 @@ object CompositesCtrl extends Controller
             // match the handler with the different actor methods
             if (compositeOptParseFromJSON.isDefined) {
                 val composite = compositeOptParseFromJSON.get
-
-                handler match {
-                    case Some("whipper.composites.add") => {
-                        val future = compositeActor ? CompositeAdd(
-                            composite)
-                        retOpt = Await.result(future, timeout.duration)
-                                    .asInstanceOf[Option[CompositeResult]]
-                    }
-                    case Some("whipper.composites.update") => {
-                        val future = compositeActor ? CompositeUpdate(
-                            composite)
-                        retOpt = Await.result(future, timeout.duration)
-                                    .asInstanceOf[Option[CompositeResult]]
-                    }
-                    case Some("whipper.composites.delete") => {
-                        val future = compositeActor ? CompositeDelete(
-                            composite)
-                        retOpt = Await.result(future, timeout.duration)
-                                    .asInstanceOf[Option[CompositeResult]]
-                    }
-                    case Some("whipper.composites.struct.append") => {
-                        val future = compositeActor ? CompositeStructAppend(
-                            composite)
-                        retOpt = Await.result(future, timeout.duration)
-                                    .asInstanceOf[Option[CompositeResult]]
-                    }
-                    case Some("whipper.composites.struct.remove") => {
-                        val future = compositeActor ? CompositeStructRemove(
-                            composite)
-                        retOpt = Await.result(future, timeout.duration)
-                                    .asInstanceOf[Option[CompositeResult]]
-                    }
-                    case Some("whipper.composites.struct.clean") => {
-                        val future = compositeActor ? CompositeStructClean(
-                            composite)
-                        retOpt = Await.result(future, timeout.duration)
-                                    .asInstanceOf[Option[CompositeResult]]
-                    }
-                    case _ => {}
-                }
+                val request = CompositeRequest(handler)
+                retOpt = request.send(composite)
             }
         }
 

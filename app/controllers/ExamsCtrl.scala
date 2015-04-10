@@ -18,8 +18,7 @@ import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 
 import models._
-import models.ExamsActor.{ExamQuery, ExamRetrieve, ExamPublish, ExamRevoke}
-import models.PapersActor.{PaperRetrieve}
+import models.ExamsActor.{ExamQuery, ExamRetrieve}
 import models.ExamResultStatus._
 
 import globals._
@@ -29,7 +28,6 @@ object ExamsCtrl extends Controller
 	implicit val timeout = Timeout(5 seconds)
 	implicit lazy val system = ActorSystem()
 	implicit lazy val eActor = system.actorOf(Props[ExamsActor])
-	implicit lazy val pActor = system.actorOf(Props[PapersActor])
 
 	def retrieve(id: Long) = Action { 
 		var retOpt = None: Option[ExamResult]
@@ -129,41 +127,8 @@ object ExamsCtrl extends Controller
 			// match the handler with the different actor methods
 			if (examOptParseFromJSON.isDefined) {
 				val exam = examOptParseFromJSON.get
-
-				handler match {
-					case Some("whipper.exams.publish.from.paper") => {
-						val pidOpt = (reqJSON \ "pid").asOpt[Long]
-						if (pidOpt.isDefined) {
-							val pid = pidOpt.get
-							// ask paper struct and attrs from the paper
-							val paperFuture = pActor ? PaperRetrieve(pid)
-							val paperRetOpt = Await.result(paperFuture, timeout.duration)
-												.asInstanceOf[Option[PaperResult]]
-							if (paperRetOpt.isDefined) {
-								val paperRet = paperRetOpt.get
-								paperRet.status match {
-									case Some(200) => {
-										exam.struct = paperRet.paper.get.struct
-										exam.attrs = paperRet.paper.get.attrs
-										// allocate a new exam with the paper data
-										val future = eActor ? ExamPublish(
-												exam)
-										retOpt = Await.result(future, timeout.duration)
-												.asInstanceOf[Option[ExamResult]]
-									}
-									case _ => {}
-								}
-							}
-						}
-					}
-					case Some("whipper.exams.revoke") => {
-						val future = eActor ? ExamRevoke(
-									exam)
-						retOpt = Await.result(future, timeout.duration)
-								.asInstanceOf[Option[ExamResult]]
-					}
-					case _ => {}
-				}
+				val request = ExamRequest(handler)
+				retOpt = request.send(exam)	
 			}
 		}
 

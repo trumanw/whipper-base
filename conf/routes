@@ -12,7 +12,7 @@ GET 	/send 						controllers.Application.send
 # - "whipper.catalog.elems.append"
 # - "whipper.catalog.elems.remove"
 # - "whipper.catalog.elems.clean"
-PATCH 	/catalogs  								controllers.CatalogCtrl.action
+POST 	/catalogs  								controllers.CatalogCtrl.action
 
 GET 	/catalogs/:id 							controllers.CatalogCtrl.retrieve(id: Long)
 GET 	/catalogs 								controllers.CatalogCtrl.query(page: Option[Int], size: Option[Int])
@@ -63,7 +63,7 @@ GET 	/papers/:id/struct 			controllers.PapersCtrl.struct(id: Long)
 
 
 # Exams "handler" :
-# - "whipper.exams.publish.from.paper"
+# - "whipper.exams.publish"
 # - "whipper.exams.revoke"
 POST 	/exams 						controllers.ExamsCtrl.action
 
