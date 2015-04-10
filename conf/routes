@@ -3,7 +3,6 @@
 
 # Home page
 GET     /                           controllers.Application.index
-GET 	/send 						controllers.Application.send
 
 # Catalog "handler" :
 # - "whipper.catalog.add"
@@ -26,6 +25,7 @@ GET 	/catalogs 								controllers.CatalogCtrl.query(page: Option[Int], size: Op
 # - "whipper.questions.attrs.remove" : remove the specific attrs elems from the question `attrs` column
 # - "whipper.questions.attrs.clean" : empty the attrs elems list of the question
 POST	/questions    				controllers.QuestionsCtrl.action
+POST 	/questions/async 			controllers.QuestionsCtrl.actionAsync
 
 GET 	/questions/:id 				controllers.QuestionsCtrl.retrieve(id: Long)
 
@@ -38,6 +38,7 @@ GET 	/questions/:id 				controllers.QuestionsCtrl.retrieve(id: Long)
 # - "whipper.composites.struct.remove" : remove specific struct elems from the composite `struct` column
 # - "whipper.composites.struct.clean" : empty the struct elems list of the composite
 POST 	/composites  				controllers.CompositesCtrl.action
+POST 	/composites/async 			controllers.CompositesCtrl.actionAsync
 
 GET 	/composites/:id 			controllers.CompositesCtrl.retrieve(id: Long)
 GET 	/composites/:id/struct 		controllers.CompositesCtrl.struct(id: Long)
@@ -56,6 +57,7 @@ GET 	/composites/:id/struct 		controllers.CompositesCtrl.struct(id: Long)
 # - "whipper.paper.status.process" : push forward the reviewing status of the paper
 # - "whipper.paper.status.reset" : reset the reviewing status of the paper to "EDITING"
 POST 	/papers 					controllers.PapersCtrl.action
+POST 	/papers/async 				controllers.PapersCtrl.actionAsync
 
 GET 	/papers/:id 				controllers.PapersCtrl.retrieve(id: Long)
 GET 	/papers 					controllers.PapersCtrl.query(page: Option[Int], size: Option[Int])
@@ -66,6 +68,7 @@ GET 	/papers/:id/struct 			controllers.PapersCtrl.struct(id: Long)
 # - "whipper.exams.publish"
 # - "whipper.exams.revoke"
 POST 	/exams 						controllers.ExamsCtrl.action
+POST 	/exams/async 				controllers.ExamsCtrl.actionAsync
 
 GET 	/exams/:id 					controllers.ExamsCtrl.retrieve(id: Long)
 GET 	/exams  					controllers.ExamsCtrl.query(page: Option[Int], size: Option[Int])

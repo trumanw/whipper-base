@@ -25,12 +25,12 @@ object Global extends WithFilters(
 	implicit lazy val db = Database.forDataSource(DB.getDataSource("default"))
 
 	override def onStart(app: Application) {
-		UpdateConsumer.start
+		HandlerMQManager.start
 		Logger.info("Whipper-Base service has started.")
 	}
 
 	override def onStop(app: Application) {
-		UpdateConsumer.stop
+		HandlerMQManager.stop
 		Logger.info("Whipper-Base service has stopped.")
 	}
 }

@@ -11,9 +11,4 @@ object Application extends Controller {
 		Ok("whipper-base is ready.")
 	}
 
-	def send = Action {
-		UpdateProducer.send
-		Ok("")
-	}
-
 }

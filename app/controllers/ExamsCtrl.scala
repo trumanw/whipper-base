@@ -22,6 +22,7 @@ import models.ExamsActor.{ExamQuery, ExamRetrieve}
 import models.ExamResultStatus._
 
 import globals._
+import utils._
 
 object ExamsCtrl extends Controller 
 	with ExamJSONTrait with PapersJSONTrait {
@@ -105,13 +106,12 @@ object ExamsCtrl extends Controller
 		}
 	}
 
-	def action = Action { request =>
+	def actionHandler(json: JsValue): Option[ExamResult] = {
 		var retOpt = None: Option[ExamResult]
 
-		val reqJSON = request.body.asJson.get
 		// parse the handler
-		val handler = (reqJSON \ "handler").asOpt[String]
-		val examJSON = (reqJSON \ "exam").asOpt[JsValue]
+		val handler = (json \ "handler").asOpt[String]
+		val examJSON = (json \ "exam").asOpt[JsValue]
 		if (handler.isDefined && examJSON.isDefined) {
 			var examOptParseFromJSON = None: Option[Exam]
 			// validate the json data to scala class
@@ -131,6 +131,25 @@ object ExamsCtrl extends Controller
 				retOpt = request.send(exam)	
 			}
 		}
+
+		retOpt
+	}
+
+	def actionAsync = Action { request =>
+    	val reqJSON = request.body.asJson.get
+
+        val mqRequestHandler = HandlerMQFactory(
+            Option("whipper.exams.mq"))
+        mqRequestHandler.send(Option(reqJSON))
+
+        Status(200)
+    }
+
+	def action = Action { request =>
+		var retOpt = None: Option[ExamResult]
+
+		val reqJSON = request.body.asJson.get
+		retOpt = actionHandler(reqJSON)
 
 		if (retOpt.isDefined) {
 			val examResult = retOpt.get

@@ -22,6 +22,7 @@ import models.CompositesActor.{CompositeRetrieve}
 import models.CompositeResultStatus._
 
 import globals._
+import utils._
 
 object CompositesCtrl extends Controller 
     with CompositesJSONTrait with QuestionsJSONTrait {
@@ -80,13 +81,12 @@ object CompositesCtrl extends Controller
         }
     }
 
-    def action = Action { request =>
+    def actionHandler(json: JsValue): Option[CompositeResult] = {
         var retOpt = None: Option[CompositeResult]
 
-        val reqJSON = request.body.asJson.get
         // parse the handler
-        val handler = (reqJSON \ "handler").asOpt[String]
-        val compositeJSON = (reqJSON \ "composite").asOpt[JsValue]
+        val handler = (json \ "handler").asOpt[String]
+        val compositeJSON = (json \ "composite").asOpt[JsValue]
         if (handler.isDefined && compositeJSON.isDefined) {
             var compositeOptParseFromJSON = None: Option[Composite]
             // validate the json data to scala class
@@ -106,6 +106,25 @@ object CompositesCtrl extends Controller
                 retOpt = request.send(composite)
             }
         }
+
+        retOpt
+    }
+
+    def actionAsync = Action { request =>
+        val reqJSON = request.body.asJson.get
+
+        val mqRequestHandler = HandlerMQFactory(
+            Option("whipper.composites.mq"))
+        mqRequestHandler.send(Option(reqJSON))
+
+        Status(200)
+    }
+
+    def action = Action { request =>
+        var retOpt = None: Option[CompositeResult]
+
+        val reqJSON = request.body.asJson.get
+        retOpt = actionHandler(reqJSON)
 
         if (retOpt.isDefined) {
             val compositeResult = retOpt.get
