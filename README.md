@@ -8,11 +8,12 @@ whipper-base是一个面向一般在线题库的数据存储系统。该工程�
 配置
 =================================
 
-* [MySQL](https://registry.hub.docker.com/_/mysql/) - 5.5 Docker Official Image 
-* [Scala](http://www.scala-lang.org/) - 2.10.4
-* [Activator](http://www.typesafe.com/) (contains Play! Framework) - 1.2.8
-* [Docker](https://www.docker.com/) - 1.3 or above
-* [Docker Compose](https://docs.docker.com/compose/) - 1.1.0
+* [MySQL](https://registry.hub.docker.com/_/mysql/) --- An official MySQL docker image.
+* [RabbitMQ](https://registry.hub.docker.com/u/tutum/rabbitmq/) --- A RabbitMQ docker image.
+* [Scala](http://www.scala-lang.org/) - version 2.10.4
+* [Activator](http://www.typesafe.com/) (contains Play! Framework) - version 1.2.8
+* [Docker](https://www.docker.com/) - version 1.3 or above
+* [Docker Compose](https://docs.docker.com/compose/) - version 1.1.0
 
 运行
 =================================
