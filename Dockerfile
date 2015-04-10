@@ -16,6 +16,11 @@ ENV 		BASE_DB_HOST jdbc:mysql://db:3306/whipper_base?characterEncoding=utf-8
 ENV 		BASE_DB_USER root
 ENV 		BASE_DB_PASSWD 123456
 
+# Setup rabbitmq host ip addr
+ENV 		RABBIT_MQ_HOST $MQ_PORT_5672_TCP_ADDR
+ENV 		RABBIT_MQ_USER admin
+ENV 		RABBIT_MQ_PASSWD 654321
+
 RUN         unzip $APP_NAME-$APP_VERSION.zip && \
             rm $APP_NAME-$APP_VERSION.zip
 ENTRYPOINT  ["./wipbase-1.0/bin/wipbase", "-Dhttp.port=9000"]

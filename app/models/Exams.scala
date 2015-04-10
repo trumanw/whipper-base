@@ -25,7 +25,8 @@ object ExamResultStatus {
 case class ExamPOJO(
 	var name: Option[String] = None,
 	var attrs: Option[String] = None,
-	var struct: Option[String] = None,	
+	var struct: Option[String] = None,
+	var pid: Option[Long] = None,
 	var uppertime: Option[Long] = Option(0),
 	var lowertime: Option[Long] = Option(0),
 	var duration: Option[Long] = Option(0),
@@ -38,6 +39,7 @@ case class Exam(
 	var name: Option[String] = None,
 	var attrs: Option[List[AttrsElem]] = None,
 	var struct: Option[List[StructElem]] = None,
+	var pid: Option[Long] = None,
 	var uppertime: Option[Long] = Option(0),
 	var lowertime: Option[Long] = Option(0),
 	var duration: Option[Long] = Option(0),
@@ -62,6 +64,7 @@ class Exams(tag: Tag)
 	def attrs = column[Option[String]]("attrs")
 	def name = column[Option[String]]("name")
 	def struct = column[Option[String]]("struct")
+	def pid = column[Option[Long]]("pid")
 	def uppertime = column[Option[Long]]("uppertime")
 	def lowertime = column[Option[Long]]("lowertime")
 	def duration = column[Option[Long]]("duration")
@@ -69,7 +72,7 @@ class Exams(tag: Tag)
 	def inittime = column[Option[Long]]("init_time")
 	def updtime = column[Option[Long]]("update_time")
 
-	def * = (name, attrs, struct,
+	def * = (name, attrs, struct, pid,
 			uppertime, lowertime, duration, 
 			tombstone, updtime, inittime, id) <> 
 			(ExamPOJO.tupled, ExamPOJO.unapply _)
@@ -118,6 +121,7 @@ object Exams extends ExamJSONTrait {
 			exam.name,
 			attrsJSONCmpString,
 			structJSONCmpString,
+			exam.pid,
 			exam.uppertime,
 			exam.lowertime,
 			exam.duration,
@@ -160,6 +164,7 @@ object Exams extends ExamJSONTrait {
 				ePOJO.name,
 				attrsListOpt,
 				structListOpt,
+				ePOJO.pid,
 				ePOJO.uppertime,
 				ePOJO.lowertime,
 				ePOJO.duration,
