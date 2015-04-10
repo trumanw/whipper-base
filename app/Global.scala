@@ -24,6 +24,7 @@ object Global extends WithFilters(
 	implicit lazy val db = Database.forDataSource(DB.getDataSource("default"))
 
 	private val rbmqFactory: ConnectionFactory = new ConnectionFactory()
+	println(Play.current.configuration.getString("mq.default.url").getOrElse(""))
  	rbmqFactory.setHost(Play.current.configuration.getString("mq.default.url").getOrElse(""))
  	rbmqFactory.setUsername(Play.current.configuration.getString("mq.default.user").getOrElse(""))
  	rbmqFactory.setPassword(Play.current.configuration.getString("mq.default.password").getOrElse(""))
