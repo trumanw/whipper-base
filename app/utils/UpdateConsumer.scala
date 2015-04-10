@@ -12,6 +12,7 @@ import scala.language.postfixOps
 
 object UpdateConsumer {
 	private val rbmqFactory: ConnectionFactory = new ConnectionFactory()
+	Logger.info(Play.current.configuration.getString("mq.default.url").getOrElse(""))
  	rbmqFactory.setHost(Play.current.configuration.getString("mq.default.url").getOrElse(""))
  	rbmqFactory.setUsername(Play.current.configuration.getString("mq.default.user").getOrElse(""))
  	rbmqFactory.setPassword(Play.current.configuration.getString("mq.default.password").getOrElse(""))
