@@ -26,6 +26,7 @@ import models.CatalogsActor.{CatalogElemsAppend, CatalogElemsRemove, CatalogElem
 import models.CatalogResultStatus._
 
 import globals._
+import utils._
 
 object CatalogCtrl extends Controller with CatalogJSONTrait {
 	implicit val timeout = Timeout(5 seconds)
