@@ -21,7 +21,8 @@ libraryDependencies ++= Seq(
     "org.apache.commons" % "commons-math3" % "3.3",
     "com.rabbitmq" % "amqp-client" % "3.4.4",
     "org.xerial.snappy" % "snappy-java" % "1.1.1.3",
-    "net.liftweb" %% "lift-json" % "2.5+"
+    "net.liftweb" %% "lift-json" % "2.5+",
+    "eu.henkelmann" % "actuarius_2.10.0" % "0.2.6"
 )
 
 scalacOptions += "-feature"
