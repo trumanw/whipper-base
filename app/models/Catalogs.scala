@@ -1,6 +1,8 @@
 package models
 
 import play.api.Play.current
+// redis cache plugin
+import play.api.cache.Cache
 
 import play.api.db.slick.DB
 import play.api.db.slick.Config.driver.simple._
@@ -47,7 +49,7 @@ case class CatalogResult(
 case class CatalogListResult(
 	val status: Option[Int] = None,
 	val catalogs: Option[List[Catalog]],
-	val count: Option[Int])
+	val count: Option[Int]) extends Serializable
 
 class Catalogs(tag: Tag) 
 	extends Table[CatalogPOJO](tag, "catalog") {
@@ -75,6 +77,7 @@ trait CatalogJSONTrait extends StructElemJSONTrait {
 object Catalogs extends CatalogJSONTrait {
 	// ORM table of Catalog
 	val table = TableQuery[Catalogs]
+	implicit lazy val catalogCacheKey = "catalog:list"
 
 	private def getPOJOFromClass(
 		catalog: Catalog): CatalogPOJO = {
@@ -181,6 +184,9 @@ object Catalogs extends CatalogJSONTrait {
 			CatalogResultStatus.CATALOG_OK,
 			Option(catalog))
 		retOpt = Option(catalogResult)
+
+		// remove cached
+		Cache.remove(catalogCacheKey)
 
 		retOpt
 	}
@@ -299,6 +305,9 @@ object Catalogs extends CatalogJSONTrait {
 						CatalogResultStatus.CATALOG_OK,
 						Option(getClassFromPOJO(queryPOJO)))
 				retOpt = Option(catalogResult)
+
+				// remove cached
+				Cache.remove(catalogCacheKey)
 			} else {
 				// catalog doesn't exists
 				val catalogResult = CatalogResult(
@@ -483,20 +492,52 @@ object Catalogs extends CatalogJSONTrait {
 		(implicit session: Session): Option[CatalogListResult] = {
 		var retOpt = None: Option[CatalogListResult]
 
-		val count = table.filter(_.tombstone === 0)
-						.length.run
+		// get catalog list from cache
+		val catalogListResultOptCached = Cache.getAs[CatalogListResult](catalogCacheKey)
+		if (catalogListResultOptCached.isDefined) {
+			val catalogListResult = catalogListResultOptCached.get
+			val catalogListOpt = catalogListResult.catalogs
+			if (catalogListOpt.isDefined) {
+				val catalogList = catalogListOpt.get
+				val count = catalogList.size
+				val catalogListWithPaging = catalogList
+							.drop(page * size)
+							.take(size)
+				retOpt = Option(CatalogListResult(
+						CatalogResultStatus.CATALOG_OK,
+						Option(catalogListWithPaging),
+						Option(count)))
+			}
+		}
 
-		val queryCatalogPOJOList = table.filter(_.tombstone === 0)
-										.filter(_.supid === "0")
-										.sortBy(_.id.desc)
-										.drop(page * size).take(size).list
-		val queryCatalogResultList = queryCatalogPOJOList.map(
+		if (!retOpt.isDefined) {
+			val count = table.filter(_.tombstone === 0)
+							.length.run
+			val queryCatalogPOJOList = table.filter(_.tombstone === 0)
+											.filter(_.supid === "0")
+											.sortBy(_.id.desc)
+											.list
+			val queryCatalogResultList = queryCatalogPOJOList.map(
 										(catalogPOJO) => getClassFromPOJO(catalogPOJO))
-		val catalogListResult = CatalogListResult(
-				CatalogResultStatus.CATALOG_OK,
-				Option(queryCatalogResultList),
-				Option(count))
-		retOpt = Option(catalogListResult)
+
+			// cache catalog result list
+			val catalogListResultCached = CatalogListResult(
+						CatalogResultStatus.CATALOG_OK,
+						Option(queryCatalogResultList),
+						Option(count))
+			Cache.set(catalogCacheKey, catalogListResultCached)
+
+			// return catalog list result with paging
+			val catalogListWithPaging = queryCatalogResultList
+						.drop(page * size)
+						.take(size)
+			val catalogListResult = CatalogListResult(
+						CatalogResultStatus.CATALOG_OK,
+						Option(catalogListWithPaging),
+						Option(count))
+			retOpt = Option(catalogListResult)
+		}
+
 		retOpt
 	}
 }

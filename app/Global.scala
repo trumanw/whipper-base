@@ -16,6 +16,9 @@ import com.rabbitmq.client.{ConnectionFactory, Connection, Channel}
 import com.rabbitmq.client.{DefaultConsumer, Envelope}
 import com.rabbitmq.client.AMQP
 
+// typesafe redis plugin
+// import com.typesafe.plugin.RedisPlugin
+
 import utils._
 import filters._
 
@@ -23,6 +26,9 @@ object Global extends WithFilters(
 	LoggingFilter, CORSFilter, new GzipFilter()) with GlobalSettings {
 	
 	implicit lazy val db = Database.forDataSource(DB.getDataSource("default"))
+	// implicit lazy val pool = Play.application.plugin[RedisPlugin]
+	// 					.getOrElse(throw new RuntimeException("MyPlugin not loaded"))
+	// 					.sedisPool
 
 	override def onStart(app: Application) {
 		HandlerMQManager.start

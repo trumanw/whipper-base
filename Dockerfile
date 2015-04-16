@@ -21,6 +21,10 @@ ENV 		RABBIT_MQ_HOST $MQ_PORT_5672_TCP_ADDR
 ENV 		RABBIT_MQ_USER admin
 ENV 		RABBIT_MQ_PASSWD 654321
 
+# Setup redis host ip addr
+ENV 		REDIS_HOST $REDIS_PORT_6379_TCP_ADDR
+ENV 		REDIS_PORT 6379
+
 RUN         unzip $APP_NAME-$APP_VERSION.zip && \
             rm $APP_NAME-$APP_VERSION.zip
 ENTRYPOINT  ["./wipbase-1.0/bin/wipbase", "-Dhttp.port=9000"]

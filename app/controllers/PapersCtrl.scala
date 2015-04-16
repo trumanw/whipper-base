@@ -3,7 +3,6 @@ package controllers
 import play.api._
 import play.api.mvc._
 import play.api.Play.current
-
 import play.api.libs.json._
 
 // Akka imports
@@ -58,15 +57,16 @@ object PapersCtrl extends Controller
 		var retOpt = None: Option[PaperListResult]
 
         val future = pActor ? PaperQuery(
-					page.getOrElse(0), 
-					size.getOrElse(10))
-		retOpt = Await.result(future, timeout.duration)
-				.asInstanceOf[Option[PaperListResult]]
+                page.getOrElse(0), 
+                size.getOrElse(10))
+        retOpt = Await.result(future, timeout.duration)
+                .asInstanceOf[Option[PaperListResult]]
 
 		if (retOpt.isDefined) {
             val paperResult = retOpt.get
             paperResult.status match {
                 case Some(200) => {
+                    // return paper list result
                     Status(PAPER_OK.get)(Json.toJson(retOpt.get))
                 }
                 case _ => {
