@@ -12,10 +12,13 @@ import eu.henkelmann.actuarius.ActuariusTransformer
 object Application extends Controller {
 
 	def index = Action {
+		
 		val transformer = new ActuariusTransformer()
 		val mainMDFile = Play.getFile("public/markdowns/main.md")
-		val mainMDFileContent = Source.fromFile(mainMDFile).getLines().mkString("\n")
+		val mainMDFileSource = Source.fromFile("file.txt")
+		val mainMDFileContent = try mainMDFileSource.getLines().mkString("\n") finally mainMDFileSource.close()
 		val mkParseOutput = transformer(mainMDFileContent)
+
 		Ok(views.html.md(mkParseOutput))
 	}
 
