@@ -17,6 +17,7 @@ whipper-base是一个面向一般在线题库的数据存储系统。该工程�
 * [Docker Compose](https://docs.docker.com/compose/) - version 1.1.0
 
 其中，
+
 1. amqp-client连接RabbitMQ，实现了一组异步操作MySQL数据库的RESTful APIs。
 2. play-plugins-redis作为play的插件，扩展了play原生的CachePlugin，从而可以通过Cache自带的API实现以redis为数据存储介质的缓存方案。
 3. docker-compose.yml和Compose使得配置开发部署环境变得十分简单。
