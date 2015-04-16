@@ -104,13 +104,13 @@ object QuestionRequest {
 
 	def apply(handler: Option[String]): QuestionRequest = {
 		handler match {
-			case Some("whipper.question.add") => {
+			case Some("whipper.questions.add") => {
 				return new QUESTION_ADD
 			}
-			case Some("whipper.question.update") => {
+			case Some("whipper.questions.update") => {
 				return new QUESTION_UPDATE
 			}
-			case Some("whipper.question.delete") => {
+			case Some("whipper.questions.delete") => {
 				return new QUESTION_DELETE
 			}
 			case Some("whipper.questions.attrs.append") => {

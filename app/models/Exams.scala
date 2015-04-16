@@ -1,6 +1,8 @@
 package models
 
 import play.api.Play.current
+// redis cache plugin
+import play.api.cache.Cache
 
 import play.api.db.slick.DB
 import play.api.db.slick.Config.driver.simple._
@@ -55,7 +57,7 @@ case class ExamResult(
 case class ExamListResult(
 	val status: Option[Int] = None,
 	val exams: Option[List[Exam]],
-	val count: Option[Int])
+	val count: Option[Int]) extends Serializable
 
 class Exams(tag: Tag)
 	extends Table[ExamPOJO](tag, "exam") {
@@ -87,6 +89,7 @@ trait ExamJSONTrait extends PapersJSONTrait {
 
 object Exams extends ExamJSONTrait {
 	val table = TableQuery[Exams]
+	implicit lazy val examListCacheKey = "exam:list"
 
 	private def getPOJOFromClass(exam: Exam): ExamPOJO = {
 		var attrsJSONCmpString = None: Option[String]
@@ -204,18 +207,52 @@ object Exams extends ExamJSONTrait {
 		(implicit session: Session): Option[ExamListResult] = {
 		var retOpt = None: Option[ExamListResult]
 
-		val count = table.filter(_.tombstone === 0)
-						.length.run
-		val queryExamPOJOList = table.filter(_.tombstone === 0)
-									.sortBy(_.updtime.desc)
-									.drop(page*size).take(size).list
-		val queryExamResultList = queryExamPOJOList.map(
+		// get exam list from cache
+		val examListResultOptCached = Cache.getAs[ExamListResult](examListCacheKey)
+		if (examListResultOptCached.isDefined) {
+			val examListResult = examListResultOptCached.get
+			val examListOpt = examListResult.exams
+			if (examListOpt.isDefined) {
+				val examList = examListOpt.get
+				val count = examList.size
+				val examListWithPaging = examList
+							.drop(page * size)
+							.take(size)
+				retOpt = Option(ExamListResult(
+						ExamResultStatus.EXAM_OK,
+						Option(examListWithPaging),
+						Option(count)))
+
+			}
+		}
+
+		if (!retOpt.isDefined) {
+			val count = table.filter(_.tombstone === 0)
+							.length.run
+			val queryExamPOJOList = table.filter(_.tombstone === 0)
+										.sortBy(_.updtime.desc)
+										.list
+			val queryExamResultList = queryExamPOJOList.map(
 									(ePOJO) => getClassFromPOJO(ePOJO))
-		val examListResult = ExamListResult(
-				ExamResultStatus.EXAM_OK,
-				Option(queryExamResultList),
-				Option(count))
-		retOpt = Option(examListResult)
+
+			// cache exam result list 
+			val examListResultCached = ExamListResult(
+						ExamResultStatus.EXAM_OK,
+						Option(queryExamResultList),
+						Option(count))
+			Cache.set(examListCacheKey, examListResultCached)
+
+			// return exam list result with paging
+			val examListWithPaging = queryExamResultList
+						.drop(page * size)
+						.take(size)
+			val examListResult = ExamListResult(
+						ExamResultStatus.EXAM_OK,
+						Option(examListWithPaging),
+						Option(count))
+			retOpt = Option(examListResult)
+		}
+
 		retOpt
 	}
 
@@ -241,6 +278,9 @@ object Exams extends ExamJSONTrait {
 						ExamResultStatus.EXAM_OK,
 						Option(getClassFromPOJO(queryPOJO)))
 				retOpt = Option(examResult)
+
+				// remove cached
+				Cache.remove(examListCacheKey)
 			} else {
 				val examResult = ExamResult(
 						ExamResultStatus.EXAM_NOT_FOUND,
@@ -271,6 +311,9 @@ object Exams extends ExamJSONTrait {
 				ExamResultStatus.EXAM_OK,
 				Option(exam))
 		retOpt = Option(examResult)
+
+		// remove cached
+		Cache.remove(examListCacheKey)
 
 		retOpt
 	}

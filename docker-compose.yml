@@ -5,6 +5,7 @@ wipbase:
   links:
    - db
    - mq
+   - redis
 db:
   image: mysql
   environment:
@@ -14,3 +15,5 @@ mq:
   image: tutum/rabbitmq
   environment:
    RABBITMQ_PASS: 654321
+redis:
+  image: redis

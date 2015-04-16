@@ -6,10 +6,6 @@ import play.api.Play.current
 
 import play.api.libs.json._
 
-// Play cached support 
-import play.api.cache.Cached
-import play.api.cache.Cache
-
 import scala.collection.mutable.ListBuffer
 
 // Akka imports

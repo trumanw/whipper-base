@@ -1,6 +1,8 @@
 package models
 
 import play.api.Play.current
+// redis cache plugin
+import play.api.cache.Cache
 
 import play.api.db.slick.DB
 import play.api.db.slick.Config.driver.simple._
@@ -57,7 +59,7 @@ case class PaperResult(
 case class PaperListResult(
 	val status: Option[Int] = None,
 	val papers: Option[List[Paper]],
-	val count: Option[Int])
+	val count: Option[Int]) extends Serializable
 
 class Papers(tag: Tag)
 	extends Table[PaperPOJO](tag, "paper") {
@@ -88,6 +90,7 @@ trait PapersJSONTrait
 object Papers extends PapersJSONTrait {
 	// ORM table of Paper
 	val table = TableQuery[Papers]
+	implicit lazy val paperListCacheKey = "paper:list"
 
 	private def getPOJOFromClass(
 		paper: Paper): PaperPOJO = {
@@ -199,6 +202,9 @@ object Papers extends PapersJSONTrait {
 			Option(paper))
 		retOpt = Option(paperResult)
 
+		// remove the cached
+		Cache.remove(paperListCacheKey)
+
 		retOpt
 	}
 
@@ -297,6 +303,9 @@ object Papers extends PapersJSONTrait {
 						PaperResultStatus.PAPER_OK,
 						Option(getClassFromPOJO(queryPOJO)))
 				retOpt = Option(paperResult)
+
+				// remove the cached
+				Cache.remove(paperListCacheKey)
 			} else {
 				// paper doesn't exists
 				val paperResult = PaperResult(
@@ -733,18 +742,51 @@ object Papers extends PapersJSONTrait {
 		(implicit session: Session): Option[PaperListResult] = {
 		var retOpt = None: Option[PaperListResult]
 
-		val count = table.filter(_.tombstone === 0)
-						.length.run
-		val queryPaperPOJOList = table.filter(_.tombstone === 0)
-									.sortBy(_.id.asc.nullsFirst)
-									.drop(page * size).take(size).list
-		val queryPaperResultList = queryPaperPOJOList.map(
-									(pPOJO) => getClassFromPOJO(pPOJO))
-		val paperListResult = PaperListResult(
-				PaperResultStatus.PAPER_OK,
-				Option(queryPaperResultList),
-				Option(count))
-		retOpt = Option(paperListResult)
+		// get paper list from cache
+        val paperListResultOptCached = Cache.getAs[PaperListResult](paperListCacheKey)
+        if (paperListResultOptCached.isDefined) {
+            val paperListResult = paperListResultOptCached.get
+            val paperListOpt = paperListResult.papers
+            if (paperListOpt.isDefined) {
+            	val paperList = paperListOpt.get
+            	val count = paperList.size
+            	val paperListWithPaging = paperList
+        				.drop(page * size)
+        				.take(size)
+            	retOpt = Option(PaperListResult(
+						PaperResultStatus.PAPER_OK,
+						Option(paperListWithPaging),
+						Option(count)))
+            }
+        }
+
+        if (!retOpt.isDefined) {
+        	val count = table.filter(_.tombstone === 0)
+							.length.run
+			val queryPaperPOJOList = table.filter(_.tombstone === 0)
+										.sortBy(_.id.asc.nullsFirst)
+										.list
+			val queryPaperResultList = queryPaperPOJOList.map(
+										(pPOJO) => getClassFromPOJO(pPOJO))
+
+			// cache paper result list
+			val paperListResultCached = PaperListResult(
+						PaperResultStatus.PAPER_OK,
+						Option(queryPaperResultList),
+						Option(count))
+			Cache.set(paperListCacheKey, paperListResultCached)
+
+			// return paper list result with paging
+			val paperListWithPaging = queryPaperResultList
+						.drop(page * size)
+						.take(size)
+			val paperListResult = PaperListResult(
+						PaperResultStatus.PAPER_OK,
+						Option(paperListWithPaging),
+						Option(count))
+			retOpt = Option(paperListResult)
+        }
+
 		retOpt
 	}
 	

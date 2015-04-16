@@ -39,13 +39,13 @@ object ExamsCtrl extends Controller
 						.asInstanceOf[Option[ExamResult]]
 
 		if (retOpt.isDefined) {
-			val paperResult = retOpt.get
-			paperResult.status match {
+			val examResult = retOpt.get
+			examResult.status match {
 				case Some(200) => {
 					Status(EXAM_OK.get)(Json.toJson(retOpt.get))
 				}
 				case _ => {
-					Status(paperResult.status.get)
+					Status(examResult.status.get)
 				}
 			}
 		} else {
@@ -58,19 +58,21 @@ object ExamsCtrl extends Controller
 		size: Option[Int]) = Action {
 		var retOpt = None: Option[ExamListResult]
 
+		
 		val future = eActor ? ExamsActor.ExamQuery(
-					page.getOrElse(0), size.getOrElse(10))
+				page.getOrElse(0), size.getOrElse(10))
 		retOpt = Await.result(future, timeout.duration)
-					.asInstanceOf[Option[ExamListResult]]
+					.asInstanceOf[Option[ExamListResult]]	
 
 		if (retOpt.isDefined) {
-            val paperResult = retOpt.get
-            paperResult.status match {
+            val examListResult = retOpt.get
+            examListResult.status match {
                 case Some(200) => {
+                	// return exam list result
                     Status(EXAM_OK.get)(Json.toJson(retOpt.get))
                 }
                 case _ => {
-                    Status(paperResult.status.get)
+                    Status(examListResult.status.get)
                 }
             }
         } else {
