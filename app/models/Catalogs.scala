@@ -47,9 +47,9 @@ case class CatalogResult(
 	val catalog: Option[Catalog] = None)
 
 case class CatalogListResult(
-	val status: Option[Int] = None,
-	val catalogs: Option[List[Catalog]],
-	val count: Option[Int]) extends Serializable
+	var status: Option[Int] = None,
+	var catalogs: Option[List[Catalog]],
+	var count: Option[Int]) extends Serializable
 
 class Catalogs(tag: Tag) 
 	extends Table[CatalogPOJO](tag, "catalog") {
@@ -517,14 +517,21 @@ object Catalogs extends CatalogJSONTrait {
 											.filter(_.supid === "0")
 											.sortBy(_.id.desc)
 											.list
-			val queryCatalogResultList = queryCatalogPOJOList.map(
-										(catalogPOJO) => getClassFromPOJO(catalogPOJO))
-
-			// cache catalog result list
 			val catalogListResultCached = CatalogListResult(
 						CatalogResultStatus.CATALOG_OK,
-						Option(queryCatalogResultList),
+						None,
 						Option(count))
+			var queryCatalogResultList = List[Catalog]()
+			if (count > 1000) {
+				// size is large than 1000, use parallel collection
+				queryCatalogResultList = queryCatalogPOJOList.par.map(
+							(catalogPOJO) => getClassFromPOJO(catalogPOJO)).toList
+				
+			} else {
+				queryCatalogResultList = queryCatalogPOJOList.map(
+							(catalogPOJO) => getClassFromPOJO(catalogPOJO))
+			}
+			catalogListResultCached.catalogs = Option(queryCatalogResultList)
 			Cache.set(catalogCacheKey, catalogListResultCached)
 
 			// return catalog list result with paging
