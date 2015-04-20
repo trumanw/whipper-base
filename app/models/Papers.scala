@@ -57,9 +57,9 @@ case class PaperResult(
 	val paper: Option[Paper] = None)
 
 case class PaperListResult(
-	val status: Option[Int] = None,
-	val papers: Option[List[Paper]],
-	val count: Option[Int]) extends Serializable
+	var status: Option[Int] = None,
+	var papers: Option[List[Paper]],
+	var count: Option[Int]) extends Serializable
 
 class Papers(tag: Tag)
 	extends Table[PaperPOJO](tag, "paper") {
@@ -766,14 +766,20 @@ object Papers extends PapersJSONTrait {
 			val queryPaperPOJOList = table.filter(_.tombstone === 0)
 										.sortBy(_.id.asc.nullsFirst)
 										.list
-			val queryPaperResultList = queryPaperPOJOList.map(
-										(pPOJO) => getClassFromPOJO(pPOJO))
-
-			// cache paper result list
 			val paperListResultCached = PaperListResult(
-						PaperResultStatus.PAPER_OK,
-						Option(queryPaperResultList),
-						Option(count))
+					PaperResultStatus.PAPER_OK,
+					None,
+					Option(count))
+			var queryPaperResultList = List[Paper]()
+			if (count > 1000) {
+				// size is larger than 1000, use parallel collection
+				queryPaperResultList = queryPaperPOJOList.par.map(
+							(pPOJO) => getClassFromPOJO(pPOJO)).toList
+			} else {
+				queryPaperResultList = queryPaperPOJOList.map(
+							(pPOJO) => getClassFromPOJO(pPOJO))
+			}
+			paperListResultCached.papers = Option(queryPaperResultList)
 			Cache.set(paperListCacheKey, paperListResultCached)
 
 			// return paper list result with paging

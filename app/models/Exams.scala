@@ -55,9 +55,9 @@ case class ExamResult(
 	val exam: Option[Exam] = None)
 
 case class ExamListResult(
-	val status: Option[Int] = None,
-	val exams: Option[List[Exam]],
-	val count: Option[Int]) extends Serializable
+	var status: Option[Int] = None,
+	var exams: Option[List[Exam]],
+	var count: Option[Int]) extends Serializable
 
 class Exams(tag: Tag)
 	extends Table[ExamPOJO](tag, "exam") {
@@ -232,14 +232,20 @@ object Exams extends ExamJSONTrait {
 			val queryExamPOJOList = table.filter(_.tombstone === 0)
 										.sortBy(_.updtime.desc)
 										.list
-			val queryExamResultList = queryExamPOJOList.map(
-									(ePOJO) => getClassFromPOJO(ePOJO))
-
-			// cache exam result list 
 			val examListResultCached = ExamListResult(
 						ExamResultStatus.EXAM_OK,
-						Option(queryExamResultList),
+						None,
 						Option(count))
+			var queryExamResultList = List[Exam]()
+			if (count > 1000) {
+				// size is large than 1000, use parallel collection
+				queryExamResultList = queryExamPOJOList.par.map(
+							(ePOJO) => getClassFromPOJO(ePOJO)).toList
+			} else {
+				queryExamResultList = queryExamPOJOList.map(
+							(ePOJO) => getClassFromPOJO(ePOJO))
+			}
+			examListResultCached.exams = Option(queryExamResultList)
 			Cache.set(examListCacheKey, examListResultCached)
 
 			// return exam list result with paging
