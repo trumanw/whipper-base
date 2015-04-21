@@ -5,6 +5,7 @@ import play.api.mvc._
 import play.api.Play.current
 
 import play.api.libs.json._
+import play.api.libs.functional.syntax._
 
 // Akka imports
 import akka.pattern.ask
