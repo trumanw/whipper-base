@@ -7,6 +7,9 @@ GET     /                           controllers.Application.index
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
+# Locations services
+GET 	/locations/provinces 		controllers.LocationsCtrl.provinces
+
 # Catalog "handler" :
 # - "whipper.catalog.add"
 # - "whipper.catalog.update"

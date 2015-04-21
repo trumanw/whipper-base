@@ -4,15 +4,13 @@ import play.api._
 import play.api.mvc._
 import play.api.Play.current
 
+import play.api.libs.json._
+
 import scala.io.Source
 import utils._
 
 // markdown support in main page
 import eu.henkelmann.actuarius.ActuariusTransformer
-
-case class MessageCache(content: String) extends Serializable {
-	override def toString = f"Serializable message content is $content."
-}
 
 object Application extends Controller {
 

@@ -31,7 +31,11 @@ object Global extends WithFilters(
 	// 					.sedisPool
 
 	override def onStart(app: Application) {
+		// rabbitmq consumers start
 		HandlerMQManager.start
+		// init location manager
+		LocationManager.init("area.json")
+		
 		Logger.info("Whipper-Base service has started.")
 	}
 
