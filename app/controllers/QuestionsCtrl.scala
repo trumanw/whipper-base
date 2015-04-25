@@ -49,30 +49,27 @@ object QuestionsCtrl extends Controller with QuestionsJSONTrait {
         }
     }
 
-    def actionHandler(json: JsValue): Option[QuestionResult] = {
+    def actionHandler(
+        handlerOpt: Option[String],
+        jsonOpt: Option[JsValue]): Option[QuestionResult] = {
         var retOpt = None: Option[QuestionResult]
 
-        // parse the handler
-        val handler = (json \ "handler").asOpt[String]
-        val questionJSON = (json \ "question").asOpt[JsValue]
-        if (handler.isDefined && questionJSON.isDefined) {
-            var questionOptParseFromJSON = None: Option[Question]
-            // validate the json data to scala class
-            questionJSON.get.validate[Question] match {
+        var questionOptParseFromJSON = None: Option[Question]
+        jsonOpt.foreach { json =>
+            // validate the json to scala object
+            json.validate[Question] match {
                 case s: JsSuccess[Question] => {
                     questionOptParseFromJSON = Option(s.get)
                 }
                 case e: JsError => {
-                    // error handling flow
+                    questionOptParseFromJSON = None
                 }
             }
+        }
 
-            // match the handler with the different actor methods
-            if (questionOptParseFromJSON.isDefined) {
-                val question = questionOptParseFromJSON.get
-                val request = QuestionRequest(handler)
-                retOpt = request.send(question)
-            }
+        questionOptParseFromJSON.foreach { question =>
+            val request = QuestionRequest(handlerOpt)
+            retOpt = request.send(question)
         }
 
         retOpt
@@ -81,9 +78,18 @@ object QuestionsCtrl extends Controller with QuestionsJSONTrait {
     def actionAsync = Action { request =>
         val reqJSON = request.body.asJson.get
 
-        val mqRequestHandler = HandlerMQFactory(
-            Option("whipper.questions.mq"))
-        mqRequestHandler.send(Option(reqJSON))
+        val handlerOpt = (reqJSON \ "handler").asOpt[String]
+        val questionJSONOpt = (reqJSON \ "question").asOpt[JsValue]
+
+        questionJSONOpt.foreach { questionJSON =>
+            val msgPack = new MsgWrapper(
+                handlerOpt, Option(questionJSON.toString))
+            val msgPackBytes = msgPack.toMsgPack
+
+            val mqRequestHandler = HandlerMQFactory(
+                Option("whipper.questions.mq"))
+            mqRequestHandler.send(Option(msgPackBytes))
+        }
 
         Status(200)
     }
@@ -92,7 +98,10 @@ object QuestionsCtrl extends Controller with QuestionsJSONTrait {
         var retOpt = None: Option[QuestionResult]
 
         val reqJSON = request.body.asJson.get
-        retOpt = actionHandler(reqJSON)
+        val handlerOpt = (reqJSON \ "handler").asOpt[String]
+        val questionJSONOpt = (reqJSON \ "question").asOpt[JsValue]
+
+        retOpt = actionHandler(handlerOpt, questionJSONOpt)
 
         if (retOpt.isDefined) {
             val questionResult = retOpt.get

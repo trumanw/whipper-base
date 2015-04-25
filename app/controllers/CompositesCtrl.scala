@@ -81,30 +81,27 @@ object CompositesCtrl extends Controller
         }
     }
 
-    def actionHandler(json: JsValue): Option[CompositeResult] = {
+    def actionHandler(
+        handlerOpt: Option[String],
+        jsonOpt: Option[JsValue]): Option[CompositeResult] = {
         var retOpt = None: Option[CompositeResult]
 
-        // parse the handler
-        val handler = (json \ "handler").asOpt[String]
-        val compositeJSON = (json \ "composite").asOpt[JsValue]
-        if (handler.isDefined && compositeJSON.isDefined) {
-            var compositeOptParseFromJSON = None: Option[Composite]
-            // validate the json data to scala class
-            compositeJSON.get.validate[Composite] match {
+        var compositeOptParseFromJSON = None: Option[Composite]
+        jsonOpt.foreach { json =>
+            // validate the json to scala object
+            json.validate[Composite] match {
                 case s: JsSuccess[Composite] => {
                     compositeOptParseFromJSON = Option(s.get)
                 }
                 case e: JsError => {
-                    // error handling flow
+                    compositeOptParseFromJSON = None
                 }
             }
+        }
 
-            // match the handler with the different actor methods
-            if (compositeOptParseFromJSON.isDefined) {
-                val composite = compositeOptParseFromJSON.get
-                val request = CompositeRequest(handler)
-                retOpt = request.send(composite)
-            }
+        compositeOptParseFromJSON.foreach { composite =>
+            val request = CompositeRequest(handlerOpt)
+            retOpt = request.send(composite)
         }
 
         retOpt
@@ -113,9 +110,18 @@ object CompositesCtrl extends Controller
     def actionAsync = Action { request =>
         val reqJSON = request.body.asJson.get
 
-        val mqRequestHandler = HandlerMQFactory(
-            Option("whipper.composites.mq"))
-        mqRequestHandler.send(Option(reqJSON))
+        val handlerOpt = (reqJSON \ "handler").asOpt[String]
+        val compositeJSONOpt = (reqJSON \ "composite").asOpt[JsValue]
+
+        compositeJSONOpt.foreach { compositeJSON =>
+            val msgPack = new MsgWrapper(
+                handlerOpt, Option(compositeJSONOpt.toString))
+            val msgPackBytes = msgPack.toMsgPack
+
+            val mqRequestHandler = HandlerMQFactory(
+                Option("whipper.composites.mq"))
+            mqRequestHandler.send(Option(msgPackBytes))
+        }
 
         Status(200)
     }
@@ -124,7 +130,10 @@ object CompositesCtrl extends Controller
         var retOpt = None: Option[CompositeResult]
 
         val reqJSON = request.body.asJson.get
-        retOpt = actionHandler(reqJSON)
+        val handlerOpt = (reqJSON \ "handler").asOpt[String]
+        val compositeJSONOpt = (reqJSON \ "composite").asOpt[JsValue]
+
+        retOpt = actionHandler(handlerOpt, compositeJSONOpt)
 
         if (retOpt.isDefined) {
             val compositeResult = retOpt.get

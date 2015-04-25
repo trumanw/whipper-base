@@ -23,7 +23,8 @@ libraryDependencies ++= Seq(
     "org.xerial.snappy" % "snappy-java" % "1.1.1.3",
     "net.liftweb" %% "lift-json" % "2.5+",
     "eu.henkelmann" % "actuarius_2.10.0" % "0.2.6",
-    "com.typesafe.play.plugins" %% "play-plugins-redis" % "2.3.1"
+    "com.typesafe.play.plugins" %% "play-plugins-redis" % "2.3.1",
+    "org.msgpack" %% "msgpack-scala" % "0.6.11"
 )
 
 resolvers ++= Seq(

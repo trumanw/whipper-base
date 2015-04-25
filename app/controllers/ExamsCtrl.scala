@@ -109,30 +109,27 @@ object ExamsCtrl extends Controller
 		}
 	}
 
-	def actionHandler(json: JsValue): Option[ExamResult] = {
+	def actionHandler(
+		handlerOpt: Option[String],
+		jsonOpt: Option[JsValue]): Option[ExamResult] = {
 		var retOpt = None: Option[ExamResult]
 
-		// parse the handler
-		val handler = (json \ "handler").asOpt[String]
-		val examJSON = (json \ "exam").asOpt[JsValue]
-		if (handler.isDefined && examJSON.isDefined) {
-			var examOptParseFromJSON = None: Option[Exam]
-			// validate the json data to scala class
-			examJSON.get.validate[Exam] match {
+		var examOptParseFromJSON = None: Option[Exam]
+		jsonOpt.foreach { json =>
+			// validate the json to scala object
+			json.validate[Exam] match {
 				case s: JsSuccess[Exam] => {
 					examOptParseFromJSON = Option(s.get)
 				}
 				case e: JsError => {
-					// error handling flow
+					examOptParseFromJSON = None
 				}
 			}
+		}
 
-			// match the handler with the different actor methods
-			if (examOptParseFromJSON.isDefined) {
-				val exam = examOptParseFromJSON.get
-				val request = ExamRequest(handler)
-				retOpt = request.send(exam)	
-			}
+		examOptParseFromJSON.foreach { exam =>
+			val request = ExamRequest(handlerOpt)
+			retOpt = request.send(exam)
 		}
 
 		retOpt
@@ -141,9 +138,18 @@ object ExamsCtrl extends Controller
 	def actionAsync = Action { request =>
     	val reqJSON = request.body.asJson.get
 
-        val mqRequestHandler = HandlerMQFactory(
-            Option("whipper.exams.mq"))
-        mqRequestHandler.send(Option(reqJSON))
+    	val handlerOpt = (reqJSON \ "handler").asOpt[String]
+    	val examJSONOpt = (reqJSON \ "exam").asOpt[JsValue]
+
+    	examJSONOpt.foreach { examJSON =>
+    		val msgPack = new MsgWrapper(
+    			handlerOpt, Option(examJSON.toString))
+    		val msgPackBytes = msgPack.toMsgPack
+
+    		val mqRequestHandler = HandlerMQFactory(
+	            Option("whipper.exams.mq"))
+    		mqRequestHandler.send(Option(msgPackBytes))
+    	}
 
         Status(200)
     }
@@ -152,7 +158,10 @@ object ExamsCtrl extends Controller
 		var retOpt = None: Option[ExamResult]
 
 		val reqJSON = request.body.asJson.get
-		retOpt = actionHandler(reqJSON)
+		val handlerOpt = (reqJSON \ "handler").asOpt[String]
+		val examJSONOpt = (reqJSON \ "exam").asOpt[JsValue]
+
+		retOpt = actionHandler(handlerOpt, examJSONOpt)
 
 		if (retOpt.isDefined) {
 			val examResult = retOpt.get

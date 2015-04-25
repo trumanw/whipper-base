@@ -11,10 +11,28 @@ import com.rabbitmq.client.AMQP
 import models._
 import controllers._
 
+// msgpack
+import org.msgpack.annotation.Message
+import org.msgpack.ScalaMessagePack
+
+@Message
+class MsgWrapper(
+	var handler: Option[String],
+	var msgbody: Option[String]) {
+	def this() = this(None, None)
+	def toMsgPack = ScalaMessagePack.write(this)
+	def fromMsgPack(bai: Array[Byte]): Unit = {
+		val restore = ScalaMessagePack.read[MsgWrapper](bai)
+		this.handler = restore.handler
+		this.msgbody = restore.msgbody
+	}
+}
+
 trait HandlerMQ {
-	def init
-	def stop
-	def send(msg: Option[JsValue])
+	def init {}
+	def stop {}
+	// def send(msg: Option[JsValue])
+	def send(bytesOpt: Option[Array[Byte]]) {}
 }
 
 object HandlerMQFactory {
@@ -24,42 +42,43 @@ object HandlerMQFactory {
  	factory.setUsername(Play.current.configuration.getString("mq.default.user").getOrElse(""))
  	factory.setPassword(Play.current.configuration.getString("mq.default.password").getOrElse(""))
 
-	private class HandlerMQ_NULL extends HandlerMQ {
-		override def init = {}
-		override def stop = {}
-		override def send(msg: Option[JsValue]) {} 
-	}
+	private class HandlerMQ_NULL extends HandlerMQ {}
+
 	private class QuestionHandlerMQ extends HandlerMQ with QuestionsJSONTrait {
 		private val QUEUE_NAME = "QuestionHandlerMQ"
 		private var connection = factory.newConnection()
 		private var channel = connection.createChannel()
-		override def init = {
+		override def init {
 			channel.queueDeclare(QUEUE_NAME, false, false, false, null)
 
 			val consumer = new DefaultConsumer(channel) {
 		    	override def handleDelivery(
 		    		consumerTag: String, envelope: Envelope, 
 		    		properties: AMQP.BasicProperties, body: Array[Byte]) {
-					// parse json to object
-					val messageString = new String(body, "UTF-8")
-					val messageJSON = Json.parse(messageString)
+		    		// message unpack via MsgPack
+		    		val recvMsgPack = new MsgWrapper(None, None)
+		    		recvMsgPack.fromMsgPack(body)
 
-					QuestionsCtrl.actionHandler(messageJSON)
+		    		val handlerOpt = recvMsgPack.handler
+		    		recvMsgPack.msgbody.foreach { msgbodyString =>
+		    			val questionJSON = Json.parse(msgbodyString)
+		    			val questionJSONOpt = Some(questionJSON)
+
+		    			QuestionsCtrl.actionHandler(handlerOpt, questionJSONOpt)
+		    		}
 		    	}
 		    }
 
 		    channel.basicConsume(QUEUE_NAME, true, consumer)
 		}
-		override def stop = {
+		override def stop {
 			channel.close()
 			connection.close()
 		}
-		override def send(msg: Option[JsValue]) {
-
-			if (msg.isDefined) {
+		override def send(bytesOpt: Option[Array[Byte]]) {
+			bytesOpt.foreach { bytes =>
 				channel.queueDeclare(QUEUE_NAME, false, false, false, null)
-				val msgString = msg.toString
-				channel.basicPublish("", QUEUE_NAME, null, msgString.getBytes("UTF-8"))
+				channel.basicPublish("", QUEUE_NAME, null, bytes)
 			}
 
 			this.stop
@@ -70,33 +89,37 @@ object HandlerMQFactory {
 		private val QUEUE_NAME = "CompositeHandlerMQ"
 		private var connection = factory.newConnection()
 		private var channel = connection.createChannel()
-		override def init = {
+		override def init {
 			channel.queueDeclare(QUEUE_NAME, false, false, false, null)
 
 			val consumer = new DefaultConsumer(channel) {
 		    	override def handleDelivery(
 		    		consumerTag: String, envelope: Envelope, 
 		    		properties: AMQP.BasicProperties, body: Array[Byte]) {
-					// parse json to object
-					val messageString = new String(body, "UTF-8")
-					val messageJSON = Json.parse(messageString)
+					// message unpack via MsgPack
+					val recvMsgPack = new MsgWrapper(None, None)
+					recvMsgPack.fromMsgPack(body)
 
-					CompositesCtrl.actionHandler(messageJSON)
+					val handlerOpt = recvMsgPack.handler
+					recvMsgPack.msgbody.foreach { msgbodyString =>
+						val compositesJSON = Json.parse(msgbodyString)
+						val compositesJSONOpt = Some(compositesJSON)
+
+						CompositesCtrl.actionHandler(handlerOpt, compositesJSONOpt)
+					}
 		    	}
 		    }
 
 		    channel.basicConsume(QUEUE_NAME, true, consumer)
 		}
-		override def stop = {
+		override def stop {
 			channel.close()
 			connection.close()
 		}
-		override def send(msg: Option[JsValue]) {
-
-			if (msg.isDefined) {
+		override def send(bytesOpt: Option[Array[Byte]]) {
+			bytesOpt.foreach { bytes =>
 				channel.queueDeclare(QUEUE_NAME, false, false, false, null)
-				val msgString = msg.toString
-				channel.basicPublish("", QUEUE_NAME, null, msgString.getBytes("UTF-8"))
+				channel.basicPublish("", QUEUE_NAME, null, bytes)
 			}
 
 			this.stop
@@ -107,33 +130,37 @@ object HandlerMQFactory {
 		private val QUEUE_NAME = "PaperHandlerMQ"
 		private var connection = factory.newConnection()
 		private var channel = connection.createChannel()
-		override def init = {
+		override def init {
 			channel.queueDeclare(QUEUE_NAME, false, false, false, null)
 
 			val consumer = new DefaultConsumer(channel) {
 		    	override def handleDelivery(
 		    		consumerTag: String, envelope: Envelope, 
 		    		properties: AMQP.BasicProperties, body: Array[Byte]) {
-					// parse json to object
-					val messageString = new String(body, "UTF-8")
-					val messageJSON = Json.parse(messageString)
+					// message unpack via MsgPack
+					val recvMsgPack = new MsgWrapper(None, None)
+					recvMsgPack.fromMsgPack(body)
 
-					PapersCtrl.actionHandler(messageJSON)
+					val handlerOpt = recvMsgPack.handler
+					recvMsgPack.msgbody.foreach { msgbodyString =>
+						val paperJSON = Json.parse(msgbodyString)
+						val paperJSONOpt = Some(paperJSON)
+
+						PapersCtrl.actionHandler(handlerOpt, paperJSONOpt)
+					}
 		    	}
 		    }
 
 		    channel.basicConsume(QUEUE_NAME, true, consumer)
 		}
-		override def stop = {
+		override def stop {
 			channel.close()
 			connection.close()
 		}
-		override def send(msg: Option[JsValue]) {
-
-			if (msg.isDefined) {
+		override def send(bytesOpt: Option[Array[Byte]]) {
+			bytesOpt.foreach { bytes =>
 				channel.queueDeclare(QUEUE_NAME, false, false, false, null)
-				val msgString = msg.toString
-				channel.basicPublish("", QUEUE_NAME, null, msgString.getBytes("UTF-8"))
+				channel.basicPublish("", QUEUE_NAME, null, bytes)
 			}
 
 			this.stop
@@ -144,33 +171,37 @@ object HandlerMQFactory {
 		private val QUEUE_NAME = "ExamHandlerMQ"
 		private var connection = factory.newConnection()
 		private var channel = connection.createChannel()
-		override def init = {
+		override def init {
 			channel.queueDeclare(QUEUE_NAME, false, false, false, null)
 
 			val consumer = new DefaultConsumer(channel) {
 		    	override def handleDelivery(
 		    		consumerTag: String, envelope: Envelope, 
 		    		properties: AMQP.BasicProperties, body: Array[Byte]) {
-					// parse json to object
-					val messageString = new String(body, "UTF-8")
-					val messageJSON = Json.parse(messageString)
+		    		// message unpack via MsgPack
+		    		val recvMsgPack = new MsgWrapper(None, None)
+		    		recvMsgPack.fromMsgPack(body)
 
-					ExamsCtrl.actionHandler(messageJSON)
+		    		val handlerOpt = recvMsgPack.handler
+		    		recvMsgPack.msgbody.foreach { msgbodyString =>
+		    			val examJSON = Json.parse(msgbodyString)
+		    			val examJSONOpt = Some(examJSON)
+
+		    			ExamsCtrl.actionHandler(handlerOpt, examJSONOpt)
+		    		}
 		    	}
 		    }
 
 		    channel.basicConsume(QUEUE_NAME, true, consumer)
 		}
-		override def stop = {
+		override def stop {
 			channel.close()
 			connection.close()
 		}
-		override def send(msg: Option[JsValue]) {
-
-			if (msg.isDefined) {
+		override def send(bytesOpt: Option[Array[Byte]]) {
+			bytesOpt.foreach { bytes =>
 				channel.queueDeclare(QUEUE_NAME, false, false, false, null)
-				val msgString = msg.toString
-				channel.basicPublish("", QUEUE_NAME, null, msgString.getBytes("UTF-8"))
+				channel.basicPublish("", QUEUE_NAME, null, bytes)
 			}
 
 			this.stop

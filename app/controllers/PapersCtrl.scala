@@ -106,30 +106,27 @@ object PapersCtrl extends Controller
         }
     }
 
-    def actionHandler(json: JsValue): Option[PaperResult] = {
+    def actionHandler(
+        handlerOpt: Option[String],
+        jsonOpt: Option[JsValue]): Option[PaperResult] = {
         var retOpt = None: Option[PaperResult]
 
-        // parse the handler
-        val handler = (json \ "handler").asOpt[String]
-        val paperJSON = (json \ "paper").asOpt[JsValue]
-        if (handler.isDefined && paperJSON.isDefined) {
-            var paperOptParseFromJSON = None: Option[Paper]
-            // validate the json data to scala class
-            paperJSON.get.validate[Paper] match {
+        var paperOptParseFromJSON = None: Option[Paper]
+        jsonOpt.foreach { json =>
+            // validate the json to scala object
+            json.validate[Paper] match {
                 case s: JsSuccess[Paper] => {
                     paperOptParseFromJSON = Option(s.get)
                 }
                 case e: JsError => {
-                    // error handling flow
+                    paperOptParseFromJSON = None
                 }
             }
+        }
 
-            // match the handler with the different actor methods
-            if (paperOptParseFromJSON.isDefined) {
-                val paper = paperOptParseFromJSON.get
-                val request = PaperRequest(handler)
-                retOpt = request.send(paper)
-            }
+        paperOptParseFromJSON.foreach { paper =>
+            val request = PaperRequest(handlerOpt)
+            retOpt = request.send(paper)
         }
 
         retOpt
@@ -138,9 +135,18 @@ object PapersCtrl extends Controller
     def actionAsync = Action { request =>
         val reqJSON = request.body.asJson.get
 
-        val mqRequestHandler = HandlerMQFactory(
-            Option("whipper.papers.mq"))
-        mqRequestHandler.send(Option(reqJSON))
+        val handlerOpt = (reqJSON \ "handler").asOpt[String]
+        val paperJSONOpt = (reqJSON \ "paper").asOpt[JsValue]
+
+        paperJSONOpt.foreach { paperJSON =>
+            val msgPack = new MsgWrapper(
+                handlerOpt, Option(paperJSONOpt.toString))
+            val msgPackBytes = msgPack.toMsgPack
+
+            val mqRequestHandler = HandlerMQFactory(
+                Option("whipper.papers.mq"))
+            mqRequestHandler.send(Option(msgPackBytes))
+        }
 
         Status(200)
     }
@@ -149,7 +155,10 @@ object PapersCtrl extends Controller
         var retOpt = None: Option[PaperResult]
 
         val reqJSON = request.body.asJson.get
-        retOpt = actionHandler(reqJSON)
+        val handlerOpt = (reqJSON \ "handler").asOpt[String]
+        val paperJSONOpt = (reqJSON \ "paper").asOpt[JsValue]
+
+        retOpt = actionHandler(handlerOpt, paperJSONOpt)
 
         if (retOpt.isDefined) {
             val paperResult = retOpt.get
